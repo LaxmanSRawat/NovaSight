@@ -15,3 +15,11 @@ download_nyc_data_*.py
 __pycache__/
 *.py[cod]
 *$py.class
+
+#for Observable notebooks
+.DS_Store
+/dist/
+node_modules/
+yarn-error.log
+*/.observablehq/cache/
+*/archive
