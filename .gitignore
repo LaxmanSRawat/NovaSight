@@ -5,7 +5,6 @@
 .env
 
 # Data files
-*.json
 *.json.gz
 *.parquet
 
