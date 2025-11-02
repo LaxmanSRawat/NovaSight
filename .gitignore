@@ -1,0 +1,17 @@
+#Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Data files
+*.json
+*.json.gz
+*.parquet
+
+# Python
+convert_to_parquet_*.py
+download_nyc_data_*.py
+__pycache__/
+*.py[cod]
+*$py.class
