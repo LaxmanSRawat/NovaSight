@@ -56,7 +56,7 @@ crime_top_10_categories_by_incident_duration
     .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
     .style("max-width", "100%")
     .style("height", "auto")
-    .style("background", "#253f4b");
+    .style("background", "#dfdfd6");
 
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -82,14 +82,18 @@ crime_top_10_categories_by_incident_duration
     .selectAll("text")
     .style("font-size", "12px")
     .style("color", "white")
-    .style("font-family", "Arial");
+    .style("font-family", "Arial")
+    .style("fill", "#000")
+    .style("color", "#000");
 
   g.append("g")
     .attr("class", "y-axis")
     .call(d3.axisLeft(yScale))
     .selectAll("text")
     .style("font-size", "12px")
-    .style("font-family", "Arial");
+    .style("font-family", "Arial")
+    .style("fill", "#000")
+    .style("color", "#000");
 
   // Add axis labels
   g.append("text")
@@ -99,7 +103,7 @@ crime_top_10_categories_by_incident_duration
     .style("font-size", "14px")
     .style("font-weight", "bold")
     .text("INCIDENT DURATION (MINUTES)")
-    .style("fill", "#dfdfd6")
+    .style("fill", "#000")
     .style("font-family", "Arial");
 
   g.append("text")
@@ -110,7 +114,7 @@ crime_top_10_categories_by_incident_duration
     .style("font-size", "14px")
     .style("font-weight", "bold")
     .text("INCIDENT TYPE")
-    .style("fill", "#dfdfd6")
+    .style("fill", "#000")
     .style("font-family", "Arial");
 
   // Draw box plots
@@ -206,6 +210,139 @@ crime_top_10_categories_by_incident_duration
 
 ## How does the distribution of call types vary throughout the day? 
 
+
+</br>
+
+### Loading the count of incident date grouped by incident date data processed using <a href="https://github.com/LaxmanSRawat/NovaSight/blob/main/temporal_analysis_count_incident_agg_by_date.ipynb" rel="external">python jupyter notebook</a>
+
+<br>
+
+```js echo
+// Load top 10 crime category by call duration data
+const crime_data = FileAttachment("count_crime_type_by_date.csv").csv({typed: true})
+```
+
+<br>
+
+```js echo
+crime_top_10_categories_by_incident_duration
+```
+
+```js echo
+
+  // Specify the chart’s dimensions.
+  const width = 928;
+  const height = 600;
+  const marginTop = 20;
+  const marginRight = 20;
+  const marginBottom = 30;
+  const marginLeft = 30;
+
+  // Create the positional scales.
+  const x = d3.scaleUtc()
+    .domain(d3.extent(crime_data, d => d.incident_date))
+    .range([marginLeft, width - marginRight]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(crime_data, d => d.count)]).nice()
+    .range([height - marginBottom, marginTop]);
+
+  // Create the SVG container.
+  const svg = d3.create("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", [0, 0, width, height])
+      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;")
+      .style("background","#dfdfd6");
+
+  // Add the horizontal axis.
+  svg.append("g")
+      .attr("transform", `translate(0,${height - marginBottom})`)
+      .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
+      .style("fill","#000")
+      .style("color","#000");
+
+  // Add the vertical axis.
+  svg.append("g")
+      .attr("transform", `translate(${marginLeft},0)`)
+      .call(d3.axisLeft(y))
+      .call(g => g.select(".domain").remove())
+      .style("fill","#000")
+      .style("color","#000")
+      .call(g => g.append("text")
+          .attr("x", -marginLeft)
+          .attr("y", 10)
+          .attr("fill", "currentColor")
+          .attr("text-anchor", "start")
+          .text("↑ Count of Incident"));
+
+
+  // Compute the points in pixel space as [x, y, z], where z is the name of the series.
+  const points = crime_data.map((d) => [x(d.incident_date), y(d.count), d.typ_desc]);
+  console.log(points)
+
+  // Group the points by series.
+  const groups = d3.rollup(points, v => Object.assign(v, {z: v[0][2]}), d => d[2]);
+
+  // Draw the lines.
+  const line = d3.line();
+  const path = svg.append("g")
+      .attr("fill", "none")
+      .attr("stroke", "steelblue")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
+    .selectAll("path")
+    .data(groups.values())
+    .join("path")
+      .style("mix-blend-mode", "multiply")
+      .attr("d", line);
+
+  // Add an invisible layer for the interactive tip.
+  const dot = svg.append("g")
+      .attr("display", "none");
+
+  dot.append("circle")
+      .attr("r", 2.5);
+
+  dot.append("text")
+      .attr("text-anchor", "middle")
+      .attr("y", -8);
+
+  svg
+      .on("pointerenter", pointerentered)
+      .on("pointermove", pointermoved)
+      .on("pointerleave", pointerleft)
+      .on("touchstart", event => event.preventDefault());
+
+   display(svg.node());
+
+  // When the pointer moves, find the closest point, update the interactive tip, and highlight
+  // the corresponding line.
+  
+  function pointermoved(event) {
+    const [xm, ym] = d3.pointer(event);
+    const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
+    const [x, y, k] = points[i];
+    path.style("stroke", ({z}) => z === k ? null : "#ddd").filter(({z}) => z === k).raise();
+    dot.attr("transform", `translate(${x},${y})`);
+    dot.select("text").text(k);
+    svg.property("value", crime_data[i]).dispatch("input", {bubbles: true});
+  }
+
+  function pointerentered() {
+    path.style("mix-blend-mode", null).style("stroke", "#ddd");
+    dot.attr("display", null);
+  }
+
+  function pointerleft() {
+    path.style("mix-blend-mode", "multiply").style("stroke", null);
+    dot.attr("display", "none");
+    svg.node().value = null;
+    svg.dispatch("input", {bubbles: true});
+  }
+
+```
 
 ### Possible Visualization: heatmap showing incident categories by hour of day
 
