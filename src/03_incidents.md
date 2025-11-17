@@ -1,4 +1,8 @@
 # Incident Analysis
+<br>
+
+## What types of incidents are most common, and how do they vary by severity level? 
+
 ### 1. Import processed data that consists of counts of Main category incidents
 Main Categories: ASSAULT, BURGLARY, DISORDERLY, LARCENY, OTHER CRIMES, OTHER-CRIME INCIDENT, ROBBERY
 ```js echo
@@ -27,9 +31,10 @@ const stackedData = (() => {
   });
 })();
 ```
-```js
+### Visualisation 1
+```js echo
 const chart = (() => {
-  const width = 900, height = 450;
+  const width = 900, height = 800;
   const margin = { top: 60, right: 40, bottom: 80, left: 70 };
 
   const svg = d3.create("svg")
@@ -75,8 +80,8 @@ const chart = (() => {
   });
 
   // bars
-  const MIN_PX = 2;
-  svg.selectAll("g.layer")
+  const fmt = d3.format(",d");
+  const bars = svg.selectAll("g.layer")
     .data(series)
     .join("g")
       .attr("class", "layer")
@@ -90,16 +95,48 @@ const chart = (() => {
     })))
     .join("rect")
       .attr("x", d => x(d.incident_main))
-      .attr("y", d => {
-        const h = y(d.y0) - y(d.y1);
-        return h < MIN_PX ? y(d.y1) - (MIN_PX - h) : y(d.y1);
-      })
-      .attr("height", d => {
-        const h = y(d.y0) - y(d.y1);
-        return h < MIN_PX ? MIN_PX : h;
-      })
+      .attr("y", d => y(d.y1))
+      .attr("height", d => y(d.y0) - y(d.y1))
       .attr("width", x.bandwidth());
 
+const segments = series.flatMap(s =>
+  s.map(v => ({
+    key: s.key,
+    incident_main: v.data.incident_main,
+    y0: v[0],
+    y1: v[1],
+    value: v[1] - v[0]
+  }))
+);
+
+const MIN_LABEL_PX = 12;
+
+// labels for large segments
+svg.append("g")
+  .selectAll("text.inside-label")
+  .data(segments.filter(d => (y(d.y0) - y(d.y1)) >= MIN_LABEL_PX))
+  .join("text")
+    .attr("class", "inside-label")
+    .attr("x", d => x(d.incident_main) + x.bandwidth() / 2)
+    .attr("y", d => (y(d.y0) + y(d.y1)) / 2 + 3)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 10)
+    .attr("fill", "white")
+    .text(d => d.value);
+
+// labels for small segments
+svg.append("g")
+  .selectAll("text.outside-label")
+  .data(segments.filter(d => (y(d.y0) - y(d.y1)) < MIN_LABEL_PX && d.value > 0))
+  .join("text")
+    .attr("class", "outside-label")
+    .attr("x", d => x(d.incident_main) + 8)
+    .attr("y", d => y(d.y1) - 2)
+    .attr("text-anchor", "start")
+    .attr("font-size", 10)
+    .attr("fill", "white")
+    .text(d => `${d.value} (${d.key})`);
+  
   // axes
   svg.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
@@ -109,10 +146,11 @@ const chart = (() => {
       .attr("transform", "rotate(-35)")
       .attr("dx", "-0.4em")
       .attr("dy", "0.2em");
-
+  
+  const ticks = d3.range(0, ymax + 5000, 5000)
   svg.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).tickFormat(d3.format(",d")));
+    .call(d3.axisLeft(y).tickValues(ticks).tickFormat(d3.format(",d")));
 
   // title
   svg.append("text")
@@ -122,17 +160,13 @@ const chart = (() => {
     .attr("font-size", 16)
     .attr("font-weight", "bold")
     .attr("fill", "#FFFFFF")
-    .text("Incidents by Main Category");
+    .text("Severity Levels of Main Incident Types");
 
   display(svg.node());
 })();
 
 ```
-
-
-<br>
-
-## What types of incidents are most common, and how do they vary by severity level? 
+### Visualisation 2
 
 <br>
 
