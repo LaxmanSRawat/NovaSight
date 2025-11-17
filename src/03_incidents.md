@@ -201,7 +201,7 @@ const incidentHierarchy = (() => {
 ```
 ```js echo
 const chart = (() => {
-  const width = 928;
+  const width = 900;
   const height = width;
   const radius = width / 6;
 
@@ -324,7 +324,7 @@ const chart = (() => {
   }
 
   const node = svg.node();
-  display(node);    // if you’re using display   
+  display(node);   
 })();
 
 
