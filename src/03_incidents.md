@@ -34,13 +34,15 @@ const stackedData = (() => {
 ### Visualisation 1: Bar Chart
 ```js echo
 const chart = (() => {
-  const width = 900, height = 800;
-  const margin = { top: 60, right: 40, bottom: 80, left: 70 };
+  const width = 900, height = 600;
+  const margin = { top: 60, right: 40, bottom: 100, left: 70 };
 
   const svg = d3.create("svg")
     .attr("viewBox", [0, 0, width, height])
     .attr("width", width)
-    .attr("height", height);
+    .attr("height", height)
+    .style("background","#dfdfd6")
+    .style("font-family", "Arial");
 
   const x = d3.scaleBand()
     .domain(stackedData.map(d => d.incident_main))
@@ -69,13 +71,14 @@ const chart = (() => {
     g.append("rect")
       .attr("width", 14)
       .attr("height", 14)
-      .attr("fill", color(key));
+      .attr("fill", color(key))
+      .style;
 
     g.append("text")
       .attr("x", 20)
       .attr("y", 11)
       .attr("font-size", 12)
-      .attr("fill", "white")
+      .attr("fill", "black")
       .text(key);
   });
 
@@ -121,7 +124,7 @@ svg.append("g")
     .attr("y", d => (y(d.y0) + y(d.y1)) / 2 + 3)
     .attr("text-anchor", "middle")
     .attr("font-size", 10)
-    .attr("fill", "white")
+    .attr("fill", "black")
     .text(d => d.value);
 
 // labels for small segments
@@ -134,23 +137,25 @@ svg.append("g")
     .attr("y", d => y(d.y1) - 2)
     .attr("text-anchor", "start")
     .attr("font-size", 10)
-    .attr("fill", "white")
+    .attr("fill", "black")
     .text(d => `${d.value} (${d.key})`);
   
   // axes
   svg.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
     .call(d3.axisBottom(x))
+    .style("color","#000")
     .selectAll("text")
       .attr("text-anchor", "end")
       .attr("transform", "rotate(-35)")
       .attr("dx", "-0.4em")
       .attr("dy", "0.2em");
   
-  const ticks = d3.range(0, ymax + 5000, 5000)
+  const ticks = d3.range(0, ymax + 5000, 50000)
   svg.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).tickValues(ticks).tickFormat(d3.format(",d")));
+    .call(d3.axisLeft(y).tickValues(ticks).tickFormat(d3.format(",d")))
+    .style("color","#000");
 
   // title
   svg.append("text")
@@ -159,7 +164,8 @@ svg.append("g")
     .attr("text-anchor", "middle")
     .attr("font-size", 16)
     .attr("font-weight", "bold")
-    .attr("fill", "#FFFFFF")
+    .style("fill","#000")
+    .style("color","#000")
     .text("Severity Levels of Main Incident Types");
 
   display(svg.node());
@@ -203,11 +209,11 @@ const incidentHierarchy = (() => {
 const chart = (() => {
   const width = 900;
   const height = width;
-  const radius = width / 6;
+  const radius = width / 7;
 
   // Create the color scale.
   const color = d3.scaleOrdinal(
-    d3.quantize(d3.interpolateRainbow, incidentHierarchy.children.length + 1)
+    d3.quantize(d3.interpolateSpectral, incidentHierarchy.children.length + 1)
   );
 
   // Compute the layout.
@@ -236,7 +242,12 @@ const chart = (() => {
   // SVG container.
   const svg = d3.create("svg")
       .attr("viewBox", [-width / 2, -height / 2, width, width])
-      .style("font", "10px sans-serif");
+      .style("font", "10px sans-serif")
+      .style("font-family", "Arial")
+      .style("background","#dfdfd6")
+      .style("fill","#000")
+      .style("color","#000")
+      ;
 
   const path = svg.append("g")
     .selectAll("path")
@@ -244,8 +255,11 @@ const chart = (() => {
     .join("path")
       .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.name); })
       .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 0.8 : 0.6) : 0)
+      .style("stroke", d => arcVisible(d.current) ? (d.children ? "#000" : "#dfdfd6") : "#dfdfd6")
+      .style("stroke-width",1)
       .attr("pointer-events", d => arcVisible(d.current) ? "auto" : "none")
-      .attr("d", d => arc(d.current));
+      .attr("d", d => arc(d.current))
+      ;
 
   path.filter(d => d.children)
       .style("cursor", "pointer")
@@ -299,6 +313,7 @@ const chart = (() => {
         return +this.getAttribute("fill-opacity") || arcVisible(d.target);
       })
         .attr("fill-opacity", d => arcVisible(d.target) ? (d.children ? 0.8 : 0.6) : 0)
+        .style("stroke", d => arcVisible(d.target) ? "#000" : "#dfdfd6")
         .attr("pointer-events", d => arcVisible(d.target) ? "auto" : "none")
         .attrTween("d", d => () => arc(d.current));
 
