@@ -31,7 +31,7 @@ const stackedData = (() => {
   });
 })();
 ```
-### Visualisation 1
+### Visualisation 1: Bar Chart
 ```js echo
 const chart = (() => {
   const width = 900, height = 800;
@@ -166,7 +166,169 @@ svg.append("g")
 })();
 
 ```
-### Visualisation 2
+## What type of incidents are most common?
+### Visualisation 2: Radial Sunburst
+```js echo
+const all_categories = await FileAttachment("all_incident_counts.csv").csv()
+display(all_categories)
+```
+```js 
+const rows = all_categories.map(d => ({ incident_main: d.incident_main.trim(), incident_sub: d.incident_sub.trim(), incident_subsub: d.incident_subsub.trim(), count: +d.count }));
+
+const incidentHierarchy = (() => {
+  const nested = d3.rollup(
+    rows,
+    v => d3.sum(v, d => d.count),
+    d => d.incident_main,
+    d => d.incident_sub,
+    d => d.incident_subsub
+  );
+
+  function mapToTree(name, value) {
+    if (value instanceof Map) {
+      return {
+        name,
+        children: Array.from(value, ([k, v]) => mapToTree(k, v))
+      };
+    } else {
+      return { name, value };
+    }
+  }
+
+  return mapToTree("All incidents", nested);
+})();
+
+```
+```js echo
+const chart = (() => {
+  const width = 928;
+  const height = width;
+  const radius = width / 6;
+
+  // Create the color scale.
+  const color = d3.scaleOrdinal(
+    d3.quantize(d3.interpolateRainbow, incidentHierarchy.children.length + 1)
+  );
+
+  // Compute the layout.
+  const hierarchy = d3.hierarchy(incidentHierarchy)
+      .sum(d => d.value)
+      .sort((a, b) => b.value - a.value);
+
+  const root = d3.partition()
+      .size([2 * Math.PI, hierarchy.height + 1])
+    (hierarchy);
+
+  root.each(d => d.current = d);
+
+  const total = root.value;
+  const format = d3.format(",d");
+
+  // Arc generator.
+  const arc = d3.arc()
+      .startAngle(d => d.x0)
+      .endAngle(d => d.x1)
+      .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
+      .padRadius(radius * 1.5)
+      .innerRadius(d => d.y0 * radius)
+      .outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
+
+  // SVG container.
+  const svg = d3.create("svg")
+      .attr("viewBox", [-width / 2, -height / 2, width, width])
+      .style("font", "10px sans-serif");
+
+  const path = svg.append("g")
+    .selectAll("path")
+    .data(root.descendants().slice(1))
+    .join("path")
+      .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.name); })
+      .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 0.8 : 0.6) : 0)
+      .attr("pointer-events", d => arcVisible(d.current) ? "auto" : "none")
+      .attr("d", d => arc(d.current));
+
+  path.filter(d => d.children)
+      .style("cursor", "pointer")
+      .on("click", clicked);
+
+  // Tooltip
+  path.append("title")
+    .text(d => {
+      const pathNames = d.ancestors().map(d => d.data.name).reverse().join("/");
+      const pct = (d.value / total) * 100;
+      return `${pathNames}\n${format(d.value)} (${pct.toFixed(1)}%)`;
+    });
+
+  const label = svg.append("g")
+      .attr("pointer-events", "none")
+      .attr("text-anchor", "middle")
+      .style("user-select", "none")
+    .selectAll("text")
+    .data(root.descendants().slice(1))
+    .join("text")
+      .attr("dy", "0.35em")
+      .attr("fill-opacity", d => +labelVisible(d.current))
+      .attr("transform", d => labelTransform(d.current))
+      .text(d => d.data.name);
+
+  const parent = svg.append("circle")
+      .datum(root)
+      .attr("r", radius)
+      .attr("fill", "none")
+      .attr("pointer-events", "all")
+      .on("click", clicked);
+
+  function clicked(event, p) {
+    parent.datum(p.parent || root);
+
+    root.each(d => d.target = {
+      x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+      x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+      y0: Math.max(0, d.y0 - p.depth),
+      y1: Math.max(0, d.y1 - p.depth)
+    });
+
+    const t = svg.transition().duration(event.altKey ? 7500 : 750);
+
+    path.transition(t)
+        .tween("data", d => {
+          const i = d3.interpolate(d.current, d.target);
+          return t => d.current = i(t);
+        })
+      .filter(function(d) {
+        return +this.getAttribute("fill-opacity") || arcVisible(d.target);
+      })
+        .attr("fill-opacity", d => arcVisible(d.target) ? (d.children ? 0.8 : 0.6) : 0)
+        .attr("pointer-events", d => arcVisible(d.target) ? "auto" : "none")
+        .attrTween("d", d => () => arc(d.current));
+
+    label.filter(function(d) {
+        return +this.getAttribute("fill-opacity") || labelVisible(d.target);
+      }).transition(t)
+        .attr("fill-opacity", d => +labelVisible(d.target))
+        .attrTween("transform", d => () => labelTransform(d.current));
+  }
+  
+  function arcVisible(d) {
+    return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0;
+  }
+
+  function labelVisible(d) {
+    return d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
+  }
+
+  function labelTransform(d) {
+    const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+    const y = (d.y0 + d.y1) / 2 * radius;
+    return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+  }
+
+  const node = svg.node();
+  display(node);    // if you’re using display   
+})();
+
+
+```
 
 <br>
 
