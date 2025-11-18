@@ -314,7 +314,6 @@ const chart = (() => {
       const pct = (d.value / total) * 100;
       return `${d.data.name} (${pct.toFixed(1)}%)`;
     });
-;
 
   const parent = svg.append("circle")
       .datum(root)
