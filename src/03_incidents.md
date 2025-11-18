@@ -173,7 +173,7 @@ svg.append("g")
 ```
 ### Findings and Insights:
 #### Observations
-1. Disorderly and Other-Crime Incident seem to be the least serious categories since all incidents are categorised as not in progress (Non CIP).
+1. Disorderly and Other-Crime Incident seems to be the least serious categories since all incidents are categorised as not in progress (Non CIP).
 2. Assault, Burglary, Larceny and Robbery are the only categories that have Critical Incidents.
 3. Assault and Larceny are the only categories that have Serious Incidents.
 4. Other Crimes is the only category that has incidents that are Not Critical even though this is the most common incident type.
