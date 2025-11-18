@@ -230,7 +230,7 @@ const incidentHierarchy = (() => {
 })();
 
 ```
-```js echo
+```js 
 const chart = (() => {
   const width = 900;
   const height = width;
@@ -375,6 +375,25 @@ const chart = (() => {
 
 
 ```
+#### **Most common main incident categories**
+- **Other Crimes** (≈ 36.7%) – Largest share  
+- **Larceny** (≈ 27.0%)  
+- **Disorderly** (≈ 17.9%)  
+- **Assault** (≈ 16.2%)  
+
+#### **Notable subcategory patterns**
+- **Harassment** is the largest subcategory overall (≈ 21.3% of all incidents) and is the most common in *Other Crimes*.  
+- **Person-related larcenies** and **vehicle-related larcenies** together make Larceny one of the biggest major categories.  
+- **Disorderly incidents** are made up mostly of *Person* (13.0%) and *Group* (5.0%) disturbances.  
+- **Assault** mostly is categorised into 'Other' which further breaks into the most common assault types being Inside and Family Related.
+
+#### **Key insights**
+- The chart shows a highly **skewed distribution**, with a few subcategories—especially *Harassment*—making up a disproportionately large portion of total incidents.
+- Categories like **Assault** and **Disorderly** have **many small subtypes**, indicating more detailed diversity even if not high in volume.
+- **Robbery** appears relatively small overall, with its subcategories (Robbery, Other, etc.) each contributing only a couple of percent.  
+- Subcategories under **Other Crimes** vary widely in size, showing that “Other Crimes” is a catch-all group containing both very common and very rare incidents.
+
+
 
 <br>
 
