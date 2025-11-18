@@ -221,6 +221,9 @@ legendSizes.forEach((val, i) => {
 display(scatterSvg.node());
 ```
 
+- Brooklyn and Queens dominate the scatter’s x-axis, while Staten Island bubbles remain small and near the origin.
+- Potential-crime bubbles (red) tend to sit higher on the y-axis for the same boroughs, showing longer closure times.
+
 ## Call intensity across boroughs
 
 ```js echo
@@ -319,6 +322,9 @@ defs.append("text")
 
 display(grid.node());
 ```
+
+- Brooklyn stays the most saturated panel for both categories; Queens and the Bronx grow noticeably hotter in the potential-crime view.
+- Staten Island’s panel remains light, indicating its lower share of calls regardless of dataset.
 
 ## Where is the mix shifting?
 
@@ -427,6 +433,9 @@ legendGroup.append("text")
 display(diffSvg.node());
 ```
 
+- Queens and the Bronx show positive share differences, signalling that potential-crime calls make up a larger slice of their workload.
+- Manhattan and Staten Island go negative, meaning confirmed incidents still dominate their mix.
+
 ## Drill into precinct workloads
 
 - Use the borough selector to focus on a specific area (or stay on “Citywide”) and inspect the busiest precincts.
@@ -519,6 +528,9 @@ precSvg.append("text")
 
 display(precSvg.node());
 ```
+ 
+- Citywide view keeps Brooklyn’s 75th precinct at the top, with several Bronx precincts close behind.
+- Switching the selector to a single borough immediately reveals that borough’s busiest precincts—for example, Queens highlights precincts 114 and 109.
 
 ## When do borough workloads spike?
 
@@ -665,3 +677,6 @@ monthSvg
 
 display(monthSvg.node());
 ```
+
+- Brooklyn and Manhattan peak early in the year and again during summer, while Queens and the Bronx ramp steadily into late summer.
+- Staten Island’s line stays comparatively flat, echoing the low-volume story from earlier charts.
