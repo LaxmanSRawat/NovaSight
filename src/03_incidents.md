@@ -83,7 +83,6 @@ const chart = (() => {
   });
 
   // bars
-  const fmt = d3.format(",d");
   const bars = svg.selectAll("g.layer")
     .data(series)
     .join("g")
