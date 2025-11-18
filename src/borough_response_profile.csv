@@ -1,0 +1,11 @@
+category,boro_nm,call_count,median_call_duration,median_arrival_delay,median_dispatch_delay,share
+Confirmed Crime,Bronx,177867,63.48,17.08,2.8,0.21801006537838322
+Confirmed Crime,Brooklyn,227045,43.9,12.47,1.85,0.27828712067913114
+Confirmed Crime,Manhattan,207015,38.35,10.77,1.72,0.25373652045801637
+Confirmed Crime,Queens,178884,56.42,17.12,2.32,0.21925659360728356
+Confirmed Crime,Staten Island,25055,44.88,11.12,1.97,0.030709699877185713
+Potential Crime,Bronx,213426,68.23,25.15,2.57,0.19097070916306141
+Potential Crime,Brooklyn,339176,37.8,12.68,1.4,0.30349011484585064
+Potential Crime,Manhattan,262942,29.0,8.97,1.22,0.2352769587995544
+Potential Crime,Queens,256382,51.62,25.47,2.63,0.22940715918699697
+Potential Crime,Staten Island,45659,42.37,16.23,2.02,0.040855058004536565

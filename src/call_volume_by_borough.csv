@@ -1,0 +1,13 @@
+category,boro_nm,call_count,share
+Confirmed Crime,Brooklyn,227045,0.2783
+Confirmed Crime,Manhattan,207015,0.2537
+Confirmed Crime,Queens,178884,0.2193
+Confirmed Crime,Bronx,177867,0.218
+Confirmed Crime,Staten Island,25055,0.0307
+Confirmed Crime,(Null),1,0.0
+Potential Crime,Brooklyn,339176,0.3035
+Potential Crime,Manhattan,262942,0.2353
+Potential Crime,Queens,256382,0.2294
+Potential Crime,Bronx,213426,0.191
+Potential Crime,Staten Island,45659,0.0409
+Potential Crime,(Null),6,0.0
