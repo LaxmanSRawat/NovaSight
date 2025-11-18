@@ -171,6 +171,32 @@ svg.append("g")
 })();
 
 ```
+### Findings and Insights:
+#### Observations
+1. Disorderly and Other-Crime Incident seems to be the least serious categories since all incidents are categorised as not in progress (Non CIP).
+2. Assault, Burglary, Larceny and Robbery are the only categories that have Critical Incidents.
+3. Assault and Larceny are the only categories that have Serious Incidents.
+4. Other Crimes is the only category that has incidents that are Not Critical even though this is the most common incident type.
+5. Disorderly, Larceny and other crimes get the most 'post incident occurrence' reporting since they have the highest Non-CIP cases.
+
+#### **Most common incidents**
+- Other Crimes
+- Larceny
+- Disorderly
+- Assault
+
+#### **Most severe incident categories**
+- Larceny — Highest number of Critical + Serious Incidents
+- Assault
+- Burglary  
+
+
+#### **Least common incidents**
+- Other-Crime Incident
+- Robbery
+
+
+
 ## What type of incidents are most common?
 ### Visualisation 2: Radial Sunburst
 ```js echo
@@ -204,7 +230,7 @@ const incidentHierarchy = (() => {
 })();
 
 ```
-```js echo
+```js 
 const chart = (() => {
   const width = 900;
   const height = width;
@@ -253,7 +279,7 @@ const chart = (() => {
     .data(root.descendants().slice(1))
     .join("path")
       .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.name); })
-      .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 0.8 : 0.6) : 0)
+      .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 1 : 0.6) : 0)
       .style("stroke", d => arcVisible(d.current) ? (d.children ? "#000" : "#dfdfd6") : "#dfdfd6")
       .style("stroke-width",1)
       .attr("pointer-events", d => arcVisible(d.current) ? "auto" : "none")
@@ -282,7 +308,10 @@ const chart = (() => {
       .attr("dy", "0.35em")
       .attr("fill-opacity", d => +labelVisible(d.current))
       .attr("transform", d => labelTransform(d.current))
-      .text(d => d.data.name);
+      .text(d => {
+      const pct = (d.value / total) * 100;
+      return `${d.data.name} (${pct.toFixed(1)}%)`;
+    });
 
   const parent = svg.append("circle")
       .datum(root)
@@ -343,6 +372,25 @@ const chart = (() => {
 
 
 ```
+#### **Most common main incident categories**
+- **Other Crimes** (≈ 36.7%) – Largest share  
+- **Larceny** (≈ 27.0%)  
+- **Disorderly** (≈ 17.9%)  
+- **Assault** (≈ 16.2%)  
+
+#### **Notable subcategory patterns**
+- **Harassment** is the largest subcategory overall (≈ 21.3% of all incidents) and is the most common in *Other Crimes*.  
+- **Person-related larcenies** and **vehicle-related larcenies** together make Larceny one of the biggest major categories.  
+- **Disorderly incidents** are made up mostly of *Person* (13.0%) and *Group* (5.0%) disturbances.  
+- **Assault** is mostly categorised into 'Other' which further breaks into the most common assault types being Inside and Family Related.
+
+#### **Key insights**
+- The chart shows a highly **skewed distribution**, with a few subcategories—especially *Harassment*—making up a disproportionately large portion of total incidents.
+- Categories like **Assault** and **Disorderly** have **many small subtypes**, indicating more detailed diversity even if not high in volume.
+- **Robbery** appears relatively small overall, with its subcategories (Robbery, Other, etc.) each contributing only a couple of percent.  
+- Subcategories under **Other Crimes** vary widely in size, showing that “Other Crimes” is a catch-all group containing both very common and very rare incidents.
+
+
 
 <br>
 
