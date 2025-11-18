@@ -171,6 +171,32 @@ svg.append("g")
 })();
 
 ```
+### Findings and Insights:
+#### Observations
+1. Disorderly and Other-Crime Incident seem to be the least serious categories since all incidents are categorised as not in progress (Non CIP).
+2. Assault, Burglary, Larceny and Robbery are the only categories that have Critical Incidents.
+3. Assault and Larceny are the only categories that have Serious Incidents.
+4. Other Crimes is the only category that has incidents that are Not Critical even though this is the most common incident type.
+5. Disorderly, Larceny and other crimes get the most 'post incident occurence' reporting since they have the highest Non-CIP cases.
+
+#### **Most common incidents**
+- Other Crimes
+- Larceny
+- Disorderly
+- Assault
+
+#### **Most severe incident categories**
+- Larceny — Highest number of Critical + Serious Incidents
+- Assault
+- Burglary  
+
+
+#### **Least common incidents**
+- Other-Crime Incident
+- Robbery
+
+
+
 ## What type of incidents are most common?
 ### Visualisation 2: Radial Sunburst
 ```js echo
@@ -248,12 +274,14 @@ const chart = (() => {
       .style("color","#000")
       ;
 
+
+
   const path = svg.append("g")
     .selectAll("path")
     .data(root.descendants().slice(1))
     .join("path")
       .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.name); })
-      .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 0.8 : 0.6) : 0)
+      .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 1 : 0.6) : 0)
       .style("stroke", d => arcVisible(d.current) ? (d.children ? "#000" : "#dfdfd6") : "#dfdfd6")
       .style("stroke-width",1)
       .attr("pointer-events", d => arcVisible(d.current) ? "auto" : "none")
@@ -282,7 +310,11 @@ const chart = (() => {
       .attr("dy", "0.35em")
       .attr("fill-opacity", d => +labelVisible(d.current))
       .attr("transform", d => labelTransform(d.current))
-      .text(d => d.data.name);
+      .text(d => {
+      const pct = (d.value / total) * 100;
+      return `${d.data.name} (${pct.toFixed(1)}%)`;
+    });
+;
 
   const parent = svg.append("circle")
       .datum(root)
