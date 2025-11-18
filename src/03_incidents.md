@@ -177,7 +177,7 @@ svg.append("g")
 2. Assault, Burglary, Larceny and Robbery are the only categories that have Critical Incidents.
 3. Assault and Larceny are the only categories that have Serious Incidents.
 4. Other Crimes is the only category that has incidents that are Not Critical even though this is the most common incident type.
-5. Disorderly, Larceny and other crimes get the most 'post incident occurence' reporting since they have the highest Non-CIP cases.
+5. Disorderly, Larceny and other crimes get the most 'post incident occurrence' reporting since they have the highest Non-CIP cases.
 
 #### **Most common incidents**
 - Other Crimes
