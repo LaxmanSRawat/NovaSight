@@ -274,8 +274,6 @@ const chart = (() => {
       .style("color","#000")
       ;
 
-
-
   const path = svg.append("g")
     .selectAll("path")
     .data(root.descendants().slice(1))
