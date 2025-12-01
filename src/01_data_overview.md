@@ -1,6 +1,14 @@
-# Data Overview
+---
+style: text-style.css
+---
+
+# Data Description
+
+Our analysis uses the NYPD Calls for Service dataset from NYC Open Data, collected through the Computer Aided Dispatch (CAD) system. The data includes incident timestamps, location coordinates, radio codes, priority levels, and response unit information—updated quarterly as part of NYC's transparency initiative.
 
 </br>
+
+<!-- Sources, collection methods, attributes used -->
 
 ### Loading the crime data downloaded from NYC Open data using <a href="https://github.com/LaxmanSRawat/NovaSight/blob/main/download_nyc_data_crime.ipynb" rel="external">python jupyter notebook</a>
 

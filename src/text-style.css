@@ -1,0 +1,6 @@
+@import url("observablehq:default.css");
+@import url("observablehq:theme-slate.css");
+
+* {
+    font-family: 'Arial';
+  }

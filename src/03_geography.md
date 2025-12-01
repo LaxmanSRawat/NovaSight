@@ -1,3 +1,13 @@
+---
+style: text-style.css
+---
+
+<!-- Questions and Findings - For each question:
+Clear question statement
+Polished D3 visualization
+Analysis and interpretation
+Insights and implications -->
+
 # Geographic Analysis
 
 ## Which boroughs and precincts experience the highest volume of 911 calls?

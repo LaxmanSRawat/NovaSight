@@ -1,16 +1,34 @@
-<!-- # NovaSight -->
+---
+style: text-style.css
+---
 
 <div class="hero">
-  <h1>NovaSight</h1>
-  <h2 >Understanding Emergency Response Patterns to Criminal Activities in NYC</h2>
+  <h1>From 911 to Scene <h1>
+  <h2>Understanding Emergency Response Patterns to Criminal Activities in NYC</h2>
+  <h3>A study by team Novasight <h3>
 </div>
 
-## Overview
+<h2> Introduction <h2>
 
-New York City's 911 system receives millions of calls annually, serving as the primary emergency dispatch mechanism for the NYPD. Through comprehensive data analysis, we examine how emergency services respond to criminal activities across the city's five boroughs, revealing patterns in call distribution, response times, and incident resolution.
+### Problem
+
+TBD
+
+### Background
+
+New York City's 911 system receives millions of calls annually, serving as the primary emergency dispatch mechanism for the NYPD. 
+
+### Motivation
+
+Through comprehensive data analysis, we examine how emergency services respond to criminal activities across the city's five boroughs, revealing patterns in call distribution, response times, and incident resolution.
+
+### Overview of Findings
+
+TBD
+
 
 <!-- TO DO ### Why This Matters -->
-
+<!-- 
 ## Key Questions We Explore
 
 <div class="grid grid-cols-2">
@@ -67,7 +85,7 @@ New York City's 911 system receives millions of calls annually, serving as the p
     <h3>About</h3>
     <p>Learn about our methodology and team</p>
   </a>
-</div>
+</div> -->
 
 
 <style>
@@ -86,11 +104,11 @@ New York City's 911 system receives millions of calls annually, serving as the p
   }
 
   .hero h1 {
-    margin: 1rem 0;
-    padding: 1rem 0;
+    /* margin: 1rem 0;
+    padding: 1rem 0; */
     max-width: none;
-    font-size: 14vw;
-    font-weight: 900;
+    font-size: 10vw;
+    font-weight: 400;
     line-height: 1;
     background: linear-gradient(30deg, var(--theme-foreground-focus), currentColor);
     -webkit-background-clip: text;
@@ -101,9 +119,19 @@ New York City's 911 system receives millions of calls annually, serving as the p
   .hero h2 {
     margin: 0;
     max-width: 34em;
-    font-size: 20px;
+    font-size: 2vw;
     font-style: initial;
     font-weight: 500;
+    line-height: 1.5;
+    color: var(--theme-foreground-muted);
+  }
+
+  .hero h3 {
+    margin: 0;
+    max-width: 34em;
+    font-size: 20px;
+    font-style: initial;
+    font-weight: 200;
     line-height: 1.5;
     color: var(--theme-foreground-muted);
   }
