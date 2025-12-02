@@ -11,12 +11,18 @@ style: text-style.css
 <h2> Introduction <h2>
 
 ### Problem
+ In recent years, the NYPD has experienced a dramatic drop in staffing due to high rates of retirement and resignations: losing roughly 300 officers per month on average. This has led to the lowest headcount in decades, making precincts across the boroughs understaffed. This attrition has coincided with rising response times and increasing calls per officer [1].  ￼
+ 
+At the same time, it is known that several 911 calls are attributed to non-critical incidents (an average of 62.6% in nationwide calls) [2]. This mismatch between high call volume (driven by social behaviour and public-safety concerns) and dwindling policing capacity creates a structural strain on emergency response, prompting a critical need to understand call patterns, allocate resources efficiently, and explore alternative response models.
 
-TBD
+Sources: 
+1. https://www.amny.com/news/nypd-attrition-crisis-longer-police-response-times/
+2. https://www.vera.org/news/most-911-calls-have-nothing-to-do-with-crime-why-are-we-still-sending-police
 
 ### Background
 
-New York City's 911 system receives millions of calls annually, serving as the primary emergency dispatch mechanism for the NYPD. 
+New York City’s 911 system receives millions of calls annually and serves as the city’s primary pathway for emergency assistance this ranges from concerned regarding crime, disorder, medical distress, and even general public safety concerns. As a primary dispatch system for the NYPD, the system classifies each call, assesses for severity and deploys resources to meet demand. Emergency calling behaviour varies widely across neighborhoods due to differences in population density, socioeconomic factors, community-police relations, and perceived threat levels. Understanding these dynamics is crucial for effective staffing, resource allocation, and the development of alternative response strategies. With rising national pressure on emergency systems and increasing reliance on police for non-criminal issues, analyzing NYC’s 911 trends provides valuable insights into both citizen behavior and operational strain.
+
 
 ### Motivation
 
