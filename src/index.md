@@ -23,15 +23,13 @@ Sources:
 
 New York City’s 911 system receives millions of calls annually and serves as the city’s primary pathway for emergency assistance this ranges from concerned regarding crime, disorder, medical distress, and even general public safety concerns. As a primary dispatch system for the NYPD, the system classifies each call, assesses for severity and deploys resources to meet demand. Emergency calling behaviour varies widely across neighborhoods due to differences in population density, socioeconomic factors, community-police relations, and perceived threat levels. Understanding these dynamics is crucial for effective staffing, resource allocation, and the development of alternative response strategies. With rising national pressure on emergency systems and increasing reliance on police for non-criminal issues, analyzing NYC’s 911 trends provides valuable insights into both citizen behavior and operational strain.
 
-
 ### Motivation
 
-Through comprehensive data analysis, we examine how emergency services respond to criminal activities across the city's five boroughs, revealing patterns in call distribution, response times, and incident resolution.
+In light of increasing response times, shrinking police staffing, and rising non-critical call volume, this project aims to use data-driven analysis to uncover how 911 calls are distributed across New York City. By examining call types, severity, geographic concentration, and temporal trends, we seek to identify structural inefficiencies and highlight opportunities for more effective resource deployment and alternative response strategies.
 
 ### Overview of Findings
 
-TBD
-
+Our analysis reveals that New York City’s 911 system is driven more by high call volume than by high-severity emergencies. The majority of incidents fall into non-critical categories, with interpersonal disputes, harassment, disorderly conduct, and minor thefts representing a substantial share of all calls. These patterns vary significantly across boroughs: Brooklyn and the Bronx carry the heaviest burdens, with the Bronx exhibiting the longest call durations and Brooklyn generating a disproportionately high number of potential crime reports. Temporal analysis indicates highly predictable weekly cycles and consistent year-round demand, while precinct-level comparisons show that a small number of precincts account for a large share of incidents. Together, these findings highlight potential for targeted staffing, improved triage, and alternative response models.
 
 <!-- TO DO ### Why This Matters -->
 <!-- 
@@ -107,6 +105,7 @@ TBD
     margin: 4rem 0 8rem;
     text-wrap: balance;
     text-align: center;
+
   }
 
   .hero h1 {
