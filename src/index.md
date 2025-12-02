@@ -7,7 +7,7 @@ style: text-style.css
   <h2>Understanding Emergency Response Patterns to Criminal Activities in NYC</h2>
   <h3>A study by team Novasight <h3>
 </div>
-
+<div class="content">
 <h2> Introduction <h2>
 
 ### Problem
@@ -30,7 +30,7 @@ In light of increasing response times, shrinking police staffing, and rising non
 ### Overview of Findings
 
 Our analysis reveals that New York City’s 911 system is driven more by high call volume than by high-severity emergencies. The majority of incidents fall into non-critical categories, with interpersonal disputes, harassment, disorderly conduct, and minor thefts representing a substantial share of all calls. These patterns vary significantly across boroughs: Brooklyn and the Bronx carry the heaviest burdens, with the Bronx exhibiting the longest call durations and Brooklyn generating a disproportionately high number of potential crime reports. Temporal analysis indicates highly predictable weekly cycles and consistent year-round demand, while precinct-level comparisons show that a small number of precincts account for a large share of incidents. Together, these findings highlight potential for targeted staffing, improved triage, and alternative response models.
-
+</div>
 <!-- TO DO ### Why This Matters -->
 <!-- 
 ## Key Questions We Explore
@@ -95,7 +95,18 @@ Our analysis reveals that New York City’s 911 system is driven more by high ca
 <style>
   .{
     font-family: 'Arial';
+    margin-right:auto;
+    margin-left:auto;
   }
+
+
+
+.content{
+display:flex;
+align-items:center;
+flex-direction:column;
+}
+
 
   .hero {
     display: flex;
