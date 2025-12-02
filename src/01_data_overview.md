@@ -45,7 +45,7 @@ Following table represents all the attributes from the dataset along with their 
 | Latitude | The Latitude of the midblock of the street segment where the violation was issued | | WGS84, decimal degrees |
 | Longitude | The Longitude of the midblock of the street segment where the violation was issued | | WGS84, decimal degrees |
 
-To extract only incidents related to only criminal (and potential criminal) activities, we manually identified 8 and 11 categories that related to crime and potential crime from 488 radio codes belonging to 63 categories. For interested readers, result of this analysis is present in <a href="https://github.com/LaxmanSRawat/NovaSight/blob/main/NYPD_Calls_for_Service_(Historic)_2024_Radio_code_categorization.xlsx" rel="external"> this spreadsheet </a>.Following table shows the these categories -
+To extract only incidents related to only criminal (and potential criminal) activities, we manually identified 8 and 11 categories that related to crime and potential crime, respectively, from 488 radio codes belonging to 63 categories. For interested readers, result of this analysis is present in <a href="https://github.com/LaxmanSRawat/NovaSight/blob/main/NYPD_Calls_for_Service_(Historic)_2024_Radio_code_categorization.xlsx" rel="external"> this spreadsheet </a>.Following table shows the these categories -
 
 | Category | Crime Types | Count of Records (2024) |
 |----------|-------------|-------------------------|
