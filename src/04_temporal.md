@@ -36,346 +36,557 @@ Insights and implications -->
 
 <br>
 
-
+<!-- PLOT 1 -->
 ```js 
+// Set up dimensions
+const margin = { top: 50, right: 80, bottom: 70, left: 330 };
+const width = 900 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
 
-  // Set up dimensions
-  const margin = { top: 40, right: 60, bottom: 60, left: 330 };
-  const width = 900 - margin.left - margin.right;
-  const height = 500 - margin.top - margin.bottom;
+// Group data by typ_desc
+const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
+const boxPlotData = Array.from(groupedData, ([key, values]) => ({
+  type: key,
+  stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
+  values: values.map(d => d.call_duration_minutes)
+}));
 
-  // Group data by typ_desc
-  const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
-  const boxPlotData = Array.from(groupedData, ([key, values]) => ({
-    type: key,
-    stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
-    values: values.map(d => d.call_duration_minutes)
-  }));
+// Sort by median in descending order
+boxPlotData.sort((a, b) => b.stats.median - a.stats.median);
 
-  // Sort by median in descending order
-  boxPlotData.sort((a, b) =>b.stats.median - a.stats.median);
+// Create SVG with gradient background
+const svg = d3.create("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
+  .style("max-width", "100%")
+  .style("height", "auto");
 
-  // Create SVG
-  const svg = d3.create("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
-    .style("max-width", "100%")
-    .style("height", "auto")
-    .style("background", "#dfdfd6");
+// Add gradient definition
+const defs = svg.append("defs");
+const gradient = defs.append("linearGradient")
+  .attr("id", "bgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+gradient.append("stop")
+  .attr("offset", "0%")
+  .attr("stop-color", "#f8f9fa");
 
-  // Create scales (swapped x and y)
-  const yScale = d3.scaleBand()
-    .domain(boxPlotData.map(d => d.type))
-    .range([0, height])
-    .padding(0.3);
+gradient.append("stop")
+  .attr("offset", "100%")
+  .attr("stop-color", "#e9ecef");
 
-  const xScale = d3.scaleLinear()
-    .domain([0, d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers]))])
-    .nice()
-    .range([0, width]);
+// Apply gradient background
+svg.append("rect")
+  .attr("width", "100%")
+  .attr("height", "100%")
+  .attr("fill", "url(#bgGradient)");
 
-  console.log(d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers])))
+const g = svg.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Create axes
-  g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(xScale))
-    .selectAll("text")
-    .style("font-size", "12px")
-    .style("color", "white")
-    .style("font-family", "Arial")
-    .style("fill", "#000")
-    .style("color", "#000");
+// Create scales
+const yScale = d3.scaleBand()
+  .domain(boxPlotData.map(d => d.type))
+  .range([0, height])
+  .padding(0.35);
 
-  g.append("g")
-    .attr("class", "y-axis")
-    .call(d3.axisLeft(yScale))
-    .selectAll("text")
-    .style("font-size", "12px")
-    .style("font-family", "Arial")
-    .style("fill", "#000")
-    .style("color", "#000");
+const xScale = d3.scaleLinear()
+  .domain([0, d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers]))])
+  .nice()
+  .range([0, width]);
 
-  // Add axis labels
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("x", width / 2)
-    .attr("y", height + margin.bottom - 10)
-    .style("font-size", "14px")
-    .style("font-weight", "bold")
-    .text("INCIDENT DURATION (MINUTES)")
-    .style("fill", "#000")
-    .style("font-family", "Arial");
+// Add subtle grid lines
+g.append("g")
+  .attr("class", "grid")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale)
+    .tickSize(-height)
+    .tickFormat("")
+  )
+  .style("stroke", "#7089a3ff")
+  .style("stroke-opacity", 0.8)
+  .style("stroke-dasharray", "3,3");
 
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -margin.left + 15)
-    .style("font-size", "14px")
-    .style("font-weight", "bold")
-    .text("INCIDENT TYPE")
-    .style("fill", "#000")
-    .style("font-family", "Arial");
+// Create axes with improved styling
+g.append("g")
+  .attr("class", "x-axis")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale).ticks(8))
+  .selectAll("text")
+  .style("font-size", "13px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#495057")
+  .style("font-weight", "500");
 
-  // Draw box plots
-  const boxHeight = yScale.bandwidth();
+g.select(".x-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
 
-  boxPlotData.forEach(d => {
-    const y = yScale(d.type);
-    const center = y + boxHeight / 2;
+g.select(".x-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
 
-    const boxGroup = g.append("g");
+g.append("g")
+  .attr("class", "y-axis")
+  .call(d3.axisLeft(yScale))
+  .selectAll("text")
+  .style("font-size", "12px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#343a40")
+  .style("font-weight", "500");
 
-    // Horizontal line from min to Q1
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.min))
-      .attr("x2", xScale(d.stats.q1))
-      .attr("y1", center)
-      .attr("y2", center)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.select(".y-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
 
-    // Horizontal line from Q3 to max
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.q3))
-      .attr("x2", xScale(d.stats.max))
-      .attr("y1", center)
-      .attr("y2", center)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.select(".y-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
 
-    // Min vertical line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.min))
-      .attr("x2", xScale(d.stats.min))
-      .attr("y1", center - boxHeight / 4)
-      .attr("y2", center + boxHeight / 4)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+// Add axis labels with improved styling
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", height + margin.bottom - 15)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT DURATION (MINUTES)")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Max vertical line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.max))
-      .attr("x2", xScale(d.stats.max))
-      .attr("y1", center - boxHeight / 4)
-      .attr("y2", center + boxHeight / 4)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -height / 2)
+  .attr("y", -margin.left + 20)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT TYPE")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Box (IQR)
-    boxGroup.append("rect")
-      .attr("x", xScale(d.stats.q1))
-      .attr("y", y)
-      .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
-      .attr("height", boxHeight)
-      .attr("fill", "steelblue")
-      .attr("opacity", 0.7)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1);
+// Add title
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", -20)
+  .style("font-size", "18px")
+  .style("font-weight", "700")
+  .style("letter-spacing", "0.5px")
+  .text("Incident Duration Distribution by Type")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Median line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.median))
-      .attr("x2", xScale(d.stats.median))
-      .attr("y1", y)
-      .attr("y2", y + boxHeight)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 2);
+// Color scale for boxes
+const colorScale = d3.scaleSequential(d3.interpolateViridis)
+  .domain([boxPlotData.length - 1, 0]);
 
-    // Outliers
-    d.stats.outliers.forEach(outlier => {
-      boxGroup.append("circle")
-        .attr("cx", xScale(outlier))
-        .attr("cy", center)
-        .attr("r", 3)
-        .attr("fill", "#e74c3c")
-        .attr("opacity", 0.6);
-    });
+// Draw box plots with enhanced styling
+const boxHeight = yScale.bandwidth();
+
+boxPlotData.forEach((d, i) => {
+  const y = yScale(d.type);
+  const center = y + boxHeight / 2;
+  const boxColor = colorScale(i);
+
+  const boxGroup = g.append("g");
+
+  // Horizontal line from min to Q1
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.q1))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Horizontal line from Q3 to max
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.q3))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Min vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.min))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Max vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.max))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Box shadow
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1) + 3)
+    .attr("y", y + 3)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", "#000")
+    .attr("opacity", 0.15)
+    .attr("rx", 4);
+
+  // Box (IQR) with gradient
+  const boxGradient = defs.append("linearGradient")
+    .attr("id", `boxGradient${i}`)
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "0%")
+    .attr("y2", "100%");
+
+  boxGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", d3.color(boxColor).brighter(0.3));
+
+  boxGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", boxColor);
+
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1))
+    .attr("y", y)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", `url(#boxGradient${i})`)
+    .attr("stroke", d3.color(boxColor).darker(0.5))
+    .attr("stroke-width", 2)
+    .attr("rx", 4);
+
+  // Median line with glow effect
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 4)
+    .attr("opacity", 0.8);
+
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#212529")
+    .attr("stroke-width", 2.5);
+
+  // Outliers with better styling
+  d.stats.outliers.forEach(outlier => {
+    boxGroup.append("circle")
+      .attr("cx", xScale(outlier))
+      .attr("cy", center)
+      .attr("r", 4.5)
+      .attr("fill", "#dc3545")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("opacity", 0.8);
   });
+});
 
-  display(svg.node());
+display(svg.node());
 ```
 
 <details>
 <summary> Code </summary>
 
 ```js echo
+// Set up dimensions
+const margin = { top: 50, right: 80, bottom: 70, left: 330 };
+const width = 900 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
 
-  // Set up dimensions
-  const margin = { top: 40, right: 60, bottom: 60, left: 330 };
-  const width = 900 - margin.left - margin.right;
-  const height = 500 - margin.top - margin.bottom;
+// Group data by typ_desc
+const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
+const boxPlotData = Array.from(groupedData, ([key, values]) => ({
+  type: key,
+  stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
+  values: values.map(d => d.call_duration_minutes)
+}));
 
-  // Group data by typ_desc
-  const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
-  const boxPlotData = Array.from(groupedData, ([key, values]) => ({
-    type: key,
-    stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
-    values: values.map(d => d.call_duration_minutes)
-  }));
+// Sort by median in descending order
+boxPlotData.sort((a, b) => b.stats.median - a.stats.median);
 
-  // Sort by median in descending order
-  boxPlotData.sort((a, b) =>b.stats.median - a.stats.median);
+// Create SVG with gradient background
+const svg = d3.create("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
+  .style("max-width", "100%")
+  .style("height", "auto");
 
-  // Create SVG
-  const svg = d3.create("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
-    .style("max-width", "100%")
-    .style("height", "auto")
-    .style("background", "#dfdfd6");
+// Add gradient definition
+const defs = svg.append("defs");
+const gradient = defs.append("linearGradient")
+  .attr("id", "bgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+gradient.append("stop")
+  .attr("offset", "0%")
+  .attr("stop-color", "#f8f9fa");
 
-  // Create scales (swapped x and y)
-  const yScale = d3.scaleBand()
-    .domain(boxPlotData.map(d => d.type))
-    .range([0, height])
-    .padding(0.3);
+gradient.append("stop")
+  .attr("offset", "100%")
+  .attr("stop-color", "#e9ecef");
 
-  const xScale = d3.scaleLinear()
-    .domain([0, d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers]))])
-    .nice()
-    .range([0, width]);
+// Apply gradient background
+svg.append("rect")
+  .attr("width", "100%")
+  .attr("height", "100%")
+  .attr("fill", "url(#bgGradient)");
 
-  console.log(d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers])))
+const g = svg.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Create axes
-  g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(xScale))
-    .selectAll("text")
-    .style("font-size", "12px")
-    .style("color", "white")
-    .style("font-family", "Arial")
-    .style("fill", "#000")
-    .style("color", "#000");
+// Create scales
+const yScale = d3.scaleBand()
+  .domain(boxPlotData.map(d => d.type))
+  .range([0, height])
+  .padding(0.35);
 
-  g.append("g")
-    .attr("class", "y-axis")
-    .call(d3.axisLeft(yScale))
-    .selectAll("text")
-    .style("font-size", "12px")
-    .style("font-family", "Arial")
-    .style("fill", "#000")
-    .style("color", "#000");
+const xScale = d3.scaleLinear()
+  .domain([0, d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers]))])
+  .nice()
+  .range([0, width]);
 
-  // Add axis labels
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("x", width / 2)
-    .attr("y", height + margin.bottom - 10)
-    .style("font-size", "14px")
-    .style("font-weight", "bold")
-    .text("INCIDENT DURATION (MINUTES)")
-    .style("fill", "#000")
-    .style("font-family", "Arial");
+// Add subtle grid lines
+g.append("g")
+  .attr("class", "grid")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale)
+    .tickSize(-height)
+    .tickFormat("")
+  )
+  .style("stroke", "#dee2e6")
+  .style("stroke-opacity", 0.3)
+  .style("stroke-dasharray", "3,3");
 
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -margin.left + 15)
-    .style("font-size", "14px")
-    .style("font-weight", "bold")
-    .text("INCIDENT TYPE")
-    .style("fill", "#000")
-    .style("font-family", "Arial");
+// Create axes with improved styling
+g.append("g")
+  .attr("class", "x-axis")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale).ticks(8))
+  .selectAll("text")
+  .style("font-size", "13px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#495057")
+  .style("font-weight", "500");
 
-  // Draw box plots
-  const boxHeight = yScale.bandwidth();
+g.select(".x-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
 
-  boxPlotData.forEach(d => {
-    const y = yScale(d.type);
-    const center = y + boxHeight / 2;
+g.select(".x-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
 
-    const boxGroup = g.append("g");
+g.append("g")
+  .attr("class", "y-axis")
+  .call(d3.axisLeft(yScale))
+  .selectAll("text")
+  .style("font-size", "12px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#343a40")
+  .style("font-weight", "500");
 
-    // Horizontal line from min to Q1
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.min))
-      .attr("x2", xScale(d.stats.q1))
-      .attr("y1", center)
-      .attr("y2", center)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.select(".y-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
 
-    // Horizontal line from Q3 to max
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.q3))
-      .attr("x2", xScale(d.stats.max))
-      .attr("y1", center)
-      .attr("y2", center)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.select(".y-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
 
-    // Min vertical line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.min))
-      .attr("x2", xScale(d.stats.min))
-      .attr("y1", center - boxHeight / 4)
-      .attr("y2", center + boxHeight / 4)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+// Add axis labels with improved styling
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", height + margin.bottom - 15)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT DURATION (MINUTES)")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Max vertical line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.max))
-      .attr("x2", xScale(d.stats.max))
-      .attr("y1", center - boxHeight / 4)
-      .attr("y2", center + boxHeight / 4)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1.5);
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -height / 2)
+  .attr("y", -margin.left + 20)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT TYPE")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Box (IQR)
-    boxGroup.append("rect")
-      .attr("x", xScale(d.stats.q1))
-      .attr("y", y)
-      .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
-      .attr("height", boxHeight)
-      .attr("fill", "steelblue")
-      .attr("opacity", 0.7)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1);
+// Add title
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", -20)
+  .style("font-size", "18px")
+  .style("font-weight", "700")
+  .style("letter-spacing", "0.5px")
+  .text("Incident Duration Distribution by Type")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
-    // Median line
-    boxGroup.append("line")
-      .attr("x1", xScale(d.stats.median))
-      .attr("x2", xScale(d.stats.median))
-      .attr("y1", y)
-      .attr("y2", y + boxHeight)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 2);
+// Color scale for boxes
+const colorScale = d3.scaleSequential(d3.interpolateViridis)
+  .domain([boxPlotData.length - 1, 0]);
 
-    // Outliers
-    d.stats.outliers.forEach(outlier => {
-      boxGroup.append("circle")
-        .attr("cx", xScale(outlier))
-        .attr("cy", center)
-        .attr("r", 3)
-        .attr("fill", "#e74c3c")
-        .attr("opacity", 0.6);
-    });
+// Draw box plots with enhanced styling
+const boxHeight = yScale.bandwidth();
+
+boxPlotData.forEach((d, i) => {
+  const y = yScale(d.type);
+  const center = y + boxHeight / 2;
+  const boxColor = colorScale(i);
+
+  const boxGroup = g.append("g");
+
+  // Horizontal line from min to Q1
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.q1))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Horizontal line from Q3 to max
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.q3))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Min vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.min))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Max vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.max))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Box shadow
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1) + 3)
+    .attr("y", y + 3)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", "#000")
+    .attr("opacity", 0.15)
+    .attr("rx", 4);
+
+  // Box (IQR) with gradient
+  const boxGradient = defs.append("linearGradient")
+    .attr("id", `boxGradient${i}`)
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "0%")
+    .attr("y2", "100%");
+
+  boxGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", d3.color(boxColor).brighter(0.3));
+
+  boxGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", boxColor);
+
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1))
+    .attr("y", y)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", `url(#boxGradient${i})`)
+    .attr("stroke", d3.color(boxColor).darker(0.5))
+    .attr("stroke-width", 2)
+    .attr("rx", 4);
+
+  // Median line with glow effect
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 4)
+    .attr("opacity", 0.8);
+
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#212529")
+    .attr("stroke-width", 2.5);
+
+  // Outliers with better styling
+  d.stats.outliers.forEach(outlier => {
+    boxGroup.append("circle")
+      .attr("cx", xScale(outlier))
+      .attr("cy", center)
+      .attr("r", 4.5)
+      .attr("fill", "#dc3545")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("opacity", 0.8);
   });
+});
 
-  svg.node();
+svg.node();
 ```
 </details>
 <br>
 
 ### Analysis and Interpretations
+<br>
 
 ### Insights and Implications
-
+<br>
 
 ## How have 911 call volumes and incident types changed over the year? 
 <br>
@@ -417,6 +628,11 @@ Insights and implications -->
       });
     });
 
+    const crime_data_by_date_categorised_arr_sorted = crime_data_by_date_categorised_arr.map(d => ({
+    ...d,
+    incident_date: new Date(d.incident_date)
+  })).sort((a, b) => a.incident_date - b.incident_date);
+
   ```
 
   ```js echo
@@ -424,121 +640,257 @@ Insights and implications -->
   ```
 </details>
 
-
+<!-- Plot 2 -->
 ```js
+// Set Dimensions and Margins
+const width = 928;
+const height = 500;
+const marginTop = 60;
+const marginRight = 180;
+const marginBottom = 60;
+const marginLeft = 60;
 
-  // Specify the chart’s dimensions.
-  const width = 928;
-  const height = 600;
-  const marginTop = 20;
-  const marginRight = 20;
-  const marginBottom = 30;
-  const marginLeft = 30;
+// X-Axis 
+const x = d3.scaleTime()
+  .domain(d3.extent(crime_data_by_date_categorised_arr_sorted, d => d.incident_date))
+  .range([marginLeft, width - marginRight]);
 
-  // Create the positional scales.
-  const x = d3.scaleUtc()
-    .domain(d3.extent(crime_data_by_date_categorised_arr, d => d.incident_date))
-    .range([marginLeft, width - marginRight]);
+// Y-Axis
+const y = d3.scaleLinear()
+  .domain([0, d3.max(crime_data_by_date_categorised_arr_sorted, d => d.count)]).nice()
+  .range([height - marginBottom, marginTop]);
 
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(crime_data_by_date_categorised_arr, d => d.count)]).nice()
-    .range([height - marginBottom, marginTop]);
+const color = d3.scaleOrdinal()
+  .domain(new Set(crime_data_by_date_categorised_arr_sorted.map(d => d.typ_desc)))
+  .range(d3.schemeCategory10);
 
-  // Create the SVG container.
-  const svg = d3.create("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [0, 0, width, height])
-      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;")
-      .style("background","#dfdfd6");
+// Create the SVG Container
+const svg = d3.create("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
+    .attr("style", "max-width: 100%; height: auto;");
 
-  // Add the horizontal axis.
-  svg.append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
-      .style("fill","#000")
-      .style("color","#000");
+// Background
+const defs = svg.append("defs");
+const bgGradient = defs.append("linearGradient")
+  .attr("id", "bgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
 
-  // Add the vertical axis.
-  svg.append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call(g => g.select(".domain").remove())
-      .style("fill","#000")
-      .style("color","#000")
-      .call(g => g.append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Count of Incident"));
+bgGradient.append("stop").attr("offset", "0%").attr("stop-color", "#f8fafc");
+bgGradient.append("stop").attr("offset", "100%").attr("stop-color", "#e2e8f0");
 
+svg.append("rect")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "url(#bgGradient)");
 
-  // Compute the points in pixel space as [x, y, z], where z is the name of the series.
-  const points = crime_data_by_date_categorised_arr.map((d) => [x(d.incident_date), y(d.count), d.typ_desc]);
-  console.log(points)
+svg.append("g")
+    .attr("class", "grid")
+    .attr("stroke", "#4d5968ff")
+    .attr("stroke-opacity", 0.8)
+    .attr("stroke-dasharray", "3,3")
+    .call(g => g.append("g")
+      .selectAll("line")
+      .data(x.ticks())
+      .join("line")
+        .attr("x1", d => 0.5 + x(d)).attr("x2", d => 0.5 + x(d))
+        .attr("y1", marginTop).attr("y2", height - marginBottom))
+    .call(g => g.append("g")
+      .selectAll("line")
+      .data(y.ticks())
+      .join("line")
+        .attr("y1", d => 0.5 + y(d)).attr("y2", d => 0.5 + y(d))
+        .attr("x1", marginLeft).attr("x2", width - marginRight));
 
-  // Group the points by series.
-  const groups = d3.rollup(points, v => Object.assign(v, {z: v[0][2]}), d => d[2]);
+// Axes
+const xAxis = svg.append("g")
+    .attr("transform", `translate(0,${height - marginBottom})`)
+    .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0));
 
-  // Draw the lines.
-  const line = d3.line();
-  const path = svg.append("g")
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
-      .attr("stroke-linejoin", "round")
-      .attr("stroke-linecap", "round")
-    .selectAll("path")
-    .data(groups.values())
-    .join("path")
-      .style("mix-blend-mode", "multiply")
-      .attr("d", line);
+xAxis.selectAll("text").style("fill", "#475569").style("font-weight", "500");
+xAxis.select(".domain").style("stroke", "#94a3b8");
+xAxis.selectAll(".tick line").style("stroke", "#94a3b8");
 
-  // Add an invisible layer for the interactive tip.
-  const dot = svg.append("g")
-      .attr("display", "none");
+const yAxis = svg.append("g")
+    .attr("transform", `translate(${marginLeft},0)`)
+    .call(d3.axisLeft(y).ticks(8));
 
-  dot.append("circle")
-      .attr("r", 2.5);
+yAxis.selectAll("text").style("fill", "#475569").style("font-weight", "500");
+yAxis.select(".domain").style("stroke", "#94a3b8");
+yAxis.selectAll(".tick line").style("stroke", "#94a3b8");
 
-  dot.append("text")
-      .attr("text-anchor", "middle")
-      .attr("y", -8);
+yAxis.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -(height - marginBottom - marginTop) / 2 - marginTop)
+    .attr("y", -45)
+    .attr("fill", "#1e293b")
+    .attr("text-anchor", "middle")
+    .attr("font-size", "14px")
+    .attr("font-weight", "600")
+    .text("Count of Incidents");
 
-  svg
-      .on("pointerenter", pointerentered)
-      .on("pointermove", pointermoved)
-      .on("pointerleave", pointerleft)
-      .on("touchstart", event => event.preventDefault());
+svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", 30)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#1e293b")
+    .attr("font-size", "18px")
+    .attr("font-weight", "700")
+    .text("Incident Trends Over Time by Date of Year");
 
-   display(svg.node());
+// --- 3. Lines ---
+const line = d3.line()
+  .x(d => x(d.incident_date))
+  .y(d => y(d.count))
+  .curve(d3.curveMonotoneX);
 
-  // When the pointer moves, find the closest point, update the interactive tip, and highlight
-  // the corresponding line.
+const groupedData = d3.group(crime_data_by_date_categorised_arr_sorted, d => d.typ_desc);
+
+const linesGroup = svg.append("g")
+    .attr("fill", "none")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-linecap", "round");
+
+linesGroup.selectAll("path")
+  .data(groupedData)
+  .join("path")
+    .attr("stroke", ([group, _]) => color(group))
+    .attr("d", ([_, values]) => line(values))
+    .attr("opacity", 0.85);
+
+// --- 4. Legend ---
+const legend = svg.append("g")
+    .attr("transform", `translate(${width - marginRight + 20}, ${marginTop})`);
+
+const legendItems = Array.from(groupedData.keys());
+legendItems.forEach((item, i) => {
+  const legendRow = legend.append("g").attr("transform", `translate(0, ${i * 28})`);
+  legendRow.append("line")
+      .attr("x1", 0).attr("x2", 20).attr("y1", 0).attr("y2", 0)
+      .attr("stroke", color(item)).attr("stroke-width", 3);
+  legendRow.append("text")
+      .attr("x", 28).attr("y", 4)
+      .attr("fill", "#334155")
+      .attr("font-size", "11px")
+      .text(item.length > 20 ? item.substring(0, 18) + '...' : item);
+});
+
+// --- 5. INTERACTION LOGIC ---
+
+// A. Create the interaction container elements
+const interactionGroup = svg.append("g")
+  .style("pointer-events", "none")
+  .attr("display", "none");
+
+// The vertical line
+const verticalLine = interactionGroup.append("line")
+  .attr("stroke", "#475569")
+  .attr("stroke-width", 1)
+  .attr("stroke-dasharray", "4,4")
+  .attr("y1", marginTop)
+  .attr("y2", height - marginBottom);
+
+// The date text at the top
+const dateLabel = interactionGroup.append("text")
+  .attr("y", marginTop - 10)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "12px")
+  .attr("font-weight", "bold")
+  .attr("fill", "#1e293b");
+
+// A group to hold the dynamic dots and count labels
+const tooltipGroup = interactionGroup.append("g");
+
+// B. Define the bisector
+const bisect = d3.bisector(d => d.incident_date).center;
+
+// C. Mouse Event Handlers with Bounds Check
+svg.on("pointerenter", () => {
+  // We can leave this empty or perform setup, 
+  // but visibility is now controlled in pointermove
+})
+.on("pointerleave", () => {
+  interactionGroup.attr("display", "none");
+  linesGroup.selectAll("path").attr("opacity", 0.85).attr("stroke-width", 2.5);
+})
+.on("pointermove", (event) => {
+  const [xPos, yPos] = d3.pointer(event);
+
+  // --- BOUNDS CHECK START ---
+  // If the mouse is outside the chart area (left, right, top, or bottom margins)
+  if (xPos < marginLeft || xPos > width - marginRight || 
+      yPos < marginTop || yPos > height - marginBottom) {
+      
+      interactionGroup.attr("display", "none");
+      return; // Stop processing
+  }
+  // --- BOUNDS CHECK END ---
+
+  // If we are inside, show the group
+  interactionGroup.attr("display", null);
   
-  function pointermoved(event) {
-    const [xm, ym] = d3.pointer(event);
-    const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
-    const [x, y, k] = points[i];
-    path.style("stroke", ({z}) => z === k ? null : "#ddd").filter(({z}) => z === k).raise();
-    dot.attr("transform", `translate(${x},${y})`);
-    dot.select("text").text(k);
-    svg.property("value", crime_data[i]).dispatch("input", {bubbles: true});
-  }
+  // 1. Invert x-position to get the corresponding date
+  const date = x.invert(xPos);
 
-  function pointerentered() {
-    path.style("mix-blend-mode", null).style("stroke", "#ddd");
-    dot.attr("display", null);
-  }
+  // 2. Update vertical line position
+  verticalLine.attr("x1", xPos).attr("x2", xPos);
+  
+  // 3. Update top date label
+  dateLabel
+    .attr("x", xPos)
+    .text(d3.timeFormat("%b %d")(date));
 
-  function pointerleft() {
-    path.style("mix-blend-mode", "multiply").style("stroke", null);
-    dot.attr("display", "none");
-    svg.node().value = null;
-    svg.dispatch("input", {bubbles: true});
-  }
+  // 4. Update intersection dots and labels
+  tooltipGroup.selectAll("*").remove();
 
+  groupedData.forEach((values, key) => {
+    const index = bisect(values, date);
+    
+    if (index < values.length && index >= 0) {
+      const d = values[index];
+      const px = x(d.incident_date);
+      const py = y(d.count);
+
+      // Only show dots if the data point is close to the mouse cursor X-wise
+      if (Math.abs(px - xPos) < 20) {
+        
+        // Add dot
+        tooltipGroup.append("circle")
+          .attr("cx", px)
+          .attr("cy", py)
+          .attr("r", 4)
+          .attr("fill", "white")
+          .attr("stroke", color(key))
+          .attr("stroke-width", 2);
+
+        // Add count text
+        const label = tooltipGroup.append("text")
+          .attr("x", px + 8) 
+          .attr("y", py + 4)
+          .attr("font-size", "11px")
+          .attr("font-weight", "bold")
+          .attr("fill", color(key))
+          .text(d.count);
+          
+        // Add white halo
+        label.attr("stroke", "white")
+             .attr("stroke-width", 3)
+             .attr("stroke-linejoin", "round")
+             .attr("paint-order", "stroke")
+             .clone(true)
+             .attr("fill", color(key))
+             .attr("stroke", "none");
+      }
+    }
+  });
+});
+
+display(svg.node());
 ```
 
 <details>
@@ -546,117 +898,255 @@ Insights and implications -->
 
 ```js echo
 
-  // Specify the chart’s dimensions.
-  const width = 928;
-  const height = 600;
-  const marginTop = 20;
-  const marginRight = 20;
-  const marginBottom = 30;
-  const marginLeft = 30;
+// Set Dimensions and Margins
+const width = 928;
+const height = 500;
+const marginTop = 60;
+const marginRight = 180;
+const marginBottom = 60;
+const marginLeft = 60;
 
-  // Create the positional scales.
-  const x = d3.scaleUtc()
-    .domain(d3.extent(crime_data, d => d.incident_date))
-    .range([marginLeft, width - marginRight]);
+// X-Axis 
+const x = d3.scaleTime()
+  .domain(d3.extent(crime_data_by_date_categorised_arr_sorted, d => d.incident_date))
+  .range([marginLeft, width - marginRight]);
 
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(crime_data, d => d.count)]).nice()
-    .range([height - marginBottom, marginTop]);
+// Y-Axis
+const y = d3.scaleLinear()
+  .domain([0, d3.max(crime_data_by_date_categorised_arr_sorted, d => d.count)]).nice()
+  .range([height - marginBottom, marginTop]);
 
-  // Create the SVG container.
-  const svg = d3.create("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [0, 0, width, height])
-      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px arial;")
-      .style("background","#dfdfd6");
+const color = d3.scaleOrdinal()
+  .domain(new Set(crime_data_by_date_categorised_arr_sorted.map(d => d.typ_desc)))
+  .range(d3.schemeCategory10);
 
-  // Add the horizontal axis.
-  svg.append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
-      .style("fill","#000")
-      .style("color","#000");
+// Create the SVG Container
+const svg = d3.create("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
+    .attr("style", "max-width: 100%; height: auto;");
 
-  // Add the vertical axis.
-  svg.append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call(g => g.select(".domain").remove())
-      .style("fill","#000")
-      .style("color","#000")
-      .call(g => g.append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Count of Incident"));
+// Background
+const defs = svg.append("defs");
+const bgGradient = defs.append("linearGradient")
+  .attr("id", "bgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
 
+bgGradient.append("stop").attr("offset", "0%").attr("stop-color", "#f8fafc");
+bgGradient.append("stop").attr("offset", "100%").attr("stop-color", "#e2e8f0");
 
-  // Compute the points in pixel space as [x, y, z], where z is the name of the series.
-  const points = crime_data.map((d) => [x(d.incident_date), y(d.count), d.typ_desc]);
-  console.log(points)
+svg.append("rect")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "url(#bgGradient)");
 
-  // Group the points by series.
-  const groups = d3.rollup(points, v => Object.assign(v, {z: v[0][2]}), d => d[2]);
+svg.append("g")
+    .attr("class", "grid")
+    .attr("stroke", "#4d5968ff")
+    .attr("stroke-opacity", 0.8)
+    .attr("stroke-dasharray", "3,3")
+    .call(g => g.append("g")
+      .selectAll("line")
+      .data(x.ticks())
+      .join("line")
+        .attr("x1", d => 0.5 + x(d)).attr("x2", d => 0.5 + x(d))
+        .attr("y1", marginTop).attr("y2", height - marginBottom))
+    .call(g => g.append("g")
+      .selectAll("line")
+      .data(y.ticks())
+      .join("line")
+        .attr("y1", d => 0.5 + y(d)).attr("y2", d => 0.5 + y(d))
+        .attr("x1", marginLeft).attr("x2", width - marginRight));
 
-  // Draw the lines.
-  const line = d3.line();
-  const path = svg.append("g")
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
-      .attr("stroke-linejoin", "round")
-      .attr("stroke-linecap", "round")
-    .selectAll("path")
-    .data(groups.values())
-    .join("path")
-      .style("mix-blend-mode", "multiply")
-      .attr("d", line);
+// Axes
+const xAxis = svg.append("g")
+    .attr("transform", `translate(0,${height - marginBottom})`)
+    .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0));
 
-  // Add an invisible layer for the interactive tip.
-  const dot = svg.append("g")
-      .attr("display", "none");
+xAxis.selectAll("text").style("fill", "#475569").style("font-weight", "500");
+xAxis.select(".domain").style("stroke", "#94a3b8");
+xAxis.selectAll(".tick line").style("stroke", "#94a3b8");
 
-  dot.append("circle")
-      .attr("r", 2.5);
+const yAxis = svg.append("g")
+    .attr("transform", `translate(${marginLeft},0)`)
+    .call(d3.axisLeft(y).ticks(8));
 
-  dot.append("text")
-      .attr("text-anchor", "middle")
-      .attr("y", -8);
+yAxis.selectAll("text").style("fill", "#475569").style("font-weight", "500");
+yAxis.select(".domain").style("stroke", "#94a3b8");
+yAxis.selectAll(".tick line").style("stroke", "#94a3b8");
 
-  svg
-      .on("pointerenter", pointerentered)
-      .on("pointermove", pointermoved)
-      .on("pointerleave", pointerleft)
-      .on("touchstart", event => event.preventDefault());
+yAxis.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -(height - marginBottom - marginTop) / 2 - marginTop)
+    .attr("y", -45)
+    .attr("fill", "#1e293b")
+    .attr("text-anchor", "middle")
+    .attr("font-size", "14px")
+    .attr("font-weight", "600")
+    .text("Count of Incidents");
 
-   display(svg.node());
+svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", 30)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#1e293b")
+    .attr("font-size", "18px")
+    .attr("font-weight", "700")
+    .text("Incident Trends Over Time by Type");
 
-  // When the pointer moves, find the closest point, update the interactive tip, and highlight
-  // the corresponding line.
+// --- 3. Lines ---
+const line = d3.line()
+  .x(d => x(d.incident_date))
+  .y(d => y(d.count))
+  .curve(d3.curveMonotoneX);
+
+const groupedData = d3.group(crime_data_by_date_categorised_arr_sorted, d => d.typ_desc);
+
+const linesGroup = svg.append("g")
+    .attr("fill", "none")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-linecap", "round");
+
+linesGroup.selectAll("path")
+  .data(groupedData)
+  .join("path")
+    .attr("stroke", ([group, _]) => color(group))
+    .attr("d", ([_, values]) => line(values))
+    .attr("opacity", 0.85);
+
+// --- 4. Legend ---
+const legend = svg.append("g")
+    .attr("transform", `translate(${width - marginRight + 20}, ${marginTop})`);
+
+const legendItems = Array.from(groupedData.keys());
+legendItems.forEach((item, i) => {
+  const legendRow = legend.append("g").attr("transform", `translate(0, ${i * 28})`);
+  legendRow.append("line")
+      .attr("x1", 0).attr("x2", 20).attr("y1", 0).attr("y2", 0)
+      .attr("stroke", color(item)).attr("stroke-width", 3);
+  legendRow.append("text")
+      .attr("x", 28).attr("y", 4)
+      .attr("fill", "#334155")
+      .attr("font-size", "11px")
+      .text(item.length > 20 ? item.substring(0, 18) + '...' : item);
+});
+
+// --- 5. INTERACTION LOGIC ---
+
+// A. Create the interaction container elements
+const interactionGroup = svg.append("g")
+  .style("pointer-events", "none")
+  .attr("display", "none");
+
+// The vertical line
+const verticalLine = interactionGroup.append("line")
+  .attr("stroke", "#475569")
+  .attr("stroke-width", 1)
+  .attr("stroke-dasharray", "4,4")
+  .attr("y1", marginTop)
+  .attr("y2", height - marginBottom);
+
+// The date text at the top
+const dateLabel = interactionGroup.append("text")
+  .attr("y", marginTop - 10)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "12px")
+  .attr("font-weight", "bold")
+  .attr("fill", "#1e293b");
+
+// A group to hold the dynamic dots and count labels
+const tooltipGroup = interactionGroup.append("g");
+
+// B. Define the bisector
+const bisect = d3.bisector(d => d.incident_date).center;
+
+// C. Mouse Event Handlers with Bounds Check
+svg.on("pointerenter", () => {
+  // We can leave this empty or perform setup, 
+  // but visibility is now controlled in pointermove
+})
+.on("pointerleave", () => {
+  interactionGroup.attr("display", "none");
+  linesGroup.selectAll("path").attr("opacity", 0.85).attr("stroke-width", 2.5);
+})
+.on("pointermove", (event) => {
+  const [xPos, yPos] = d3.pointer(event);
+
+  // --- BOUNDS CHECK START ---
+  // If the mouse is outside the chart area (left, right, top, or bottom margins)
+  if (xPos < marginLeft || xPos > width - marginRight || 
+      yPos < marginTop || yPos > height - marginBottom) {
+      
+      interactionGroup.attr("display", "none");
+      return; // Stop processing
+  }
+  // --- BOUNDS CHECK END ---
+
+  // If we are inside, show the group
+  interactionGroup.attr("display", null);
   
-  function pointermoved(event) {
-    const [xm, ym] = d3.pointer(event);
-    const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
-    const [x, y, k] = points[i];
-    path.style("stroke", ({z}) => z === k ? null : "#ddd").filter(({z}) => z === k).raise();
-    dot.attr("transform", `translate(${x},${y})`);
-    dot.select("text").text(k);
-    svg.property("value", crime_data[i]).dispatch("input", {bubbles: true});
-  }
+  // 1. Invert x-position to get the corresponding date
+  const date = x.invert(xPos);
 
-  function pointerentered() {
-    path.style("mix-blend-mode", null).style("stroke", "#ddd");
-    dot.attr("display", null);
-  }
+  // 2. Update vertical line position
+  verticalLine.attr("x1", xPos).attr("x2", xPos);
+  
+  // 3. Update top date label
+  dateLabel
+    .attr("x", xPos)
+    .text(d3.timeFormat("%b %d")(date));
 
-  function pointerleft() {
-    path.style("mix-blend-mode", "multiply").style("stroke", null);
-    dot.attr("display", "none");
-    svg.node().value = null;
-    svg.dispatch("input", {bubbles: true});
-  }
+  // 4. Update intersection dots and labels
+  tooltipGroup.selectAll("*").remove();
+
+  groupedData.forEach((values, key) => {
+    const index = bisect(values, date);
+    
+    if (index < values.length && index >= 0) {
+      const d = values[index];
+      const px = x(d.incident_date);
+      const py = y(d.count);
+
+      // Only show dots if the data point is close to the mouse cursor X-wise
+      if (Math.abs(px - xPos) < 20) {
+        
+        // Add dot
+        tooltipGroup.append("circle")
+          .attr("cx", px)
+          .attr("cy", py)
+          .attr("r", 4)
+          .attr("fill", "white")
+          .attr("stroke", color(key))
+          .attr("stroke-width", 2);
+
+        // Add count text
+        const label = tooltipGroup.append("text")
+          .attr("x", px + 8) 
+          .attr("y", py + 4)
+          .attr("font-size", "11px")
+          .attr("font-weight", "bold")
+          .attr("fill", color(key))
+          .text(d.count);
+          
+        // Add white halo
+        label.attr("stroke", "white")
+             .attr("stroke-width", 3)
+             .attr("stroke-linejoin", "round")
+             .attr("paint-order", "stroke")
+             .clone(true)
+             .attr("fill", color(key))
+             .attr("stroke", "none");
+      }
+    }
+  });
+});
+
+svg.node();
 
 ```
 </details>
@@ -664,8 +1154,10 @@ Insights and implications -->
 <br>
 
 ### Analysis and Interpretations
+<br>
 
 ### Insights and Implications
+<br>
 
 ## How does the distribution of call types vary throughout the day? 
 
@@ -724,84 +1216,231 @@ Legend(d3.scaleSequential([0, d3.max(heatmapData.map(d => d.count))], d3.interpo
 })
 ```
 
+<!-- Plot 3 -->
+
 ```js
-{
-  // Dimensions
-  const margin = { top: 50, right: 100, bottom: 50, left: 150 };
-  const cellWidth = 30;
-  const cellHeight = 30;
-  const width = cellWidth * hours.length + margin.left + margin.right;
-  const height = cellHeight * categories.length + margin.top + margin.bottom;
+// Dimensions
+const margin = { top: 80, right: 150, bottom: 80, left: 160 };
+const cellWidth = 32;
+const cellHeight = 32;
+const width = cellWidth * hours.length + margin.left + margin.right;
+const height = cellHeight * categories.length + margin.top + margin.bottom;
 
-  // Create SVG
-  const svg = d3.create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px arial;")
-    .style("background","#dfdfd6");
+// Create SVG
+const svg = d3.create("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("viewBox", [0, 0, width, height])
+  .attr("style", "max-width: 100%; height: auto; overflow: visible;");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+// Add gradient background
+const defs = svg.append("defs");
+const bgGradient = defs.append("linearGradient")
+  .attr("id", "heatmapBgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
 
-  // Color scale
-  const colorScale = d3.scaleSequential(d3.interpolateInferno)
-    .domain([0, d3.max(heatmapData, d => d.count)]);
+bgGradient.append("stop")
+  .attr("offset", "0%")
+  .attr("stop-color", "#f1f5f9");
 
-  // X scale (hours)
-  const xScale = d3.scaleBand()
-    .domain(hours)
-    .range([0, cellWidth * hours.length])
-    .padding(0.05);
+bgGradient.append("stop")
+  .attr("offset", "100%")
+  .attr("stop-color", "#e2e8f0");
 
-  // Y scale (typ_desc)
-  const yScale = d3.scaleBand()
-    .domain(categories)
-    .range([0, cellHeight * categories.length])
-    .padding(0.05);
+svg.append("rect")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "url(#heatmapBgGradient)");
 
-  // Create heatmap cells
-  g.selectAll("rect")
-    .data(heatmapData)
-    .join("rect")
-    .attr("x", d => xScale(d.hour))
-    .attr("y", d => yScale(d.typ_desc))
-    .attr("width", xScale.bandwidth())
-    .attr("height", yScale.bandwidth())
-    .attr("fill", d => colorScale(d.count))
-    .attr("rx", 2) // Rounded corners
-    .attr("ry", 2)
-    // .attr("stroke", "black")
-    .attr("stroke-width", 0.5)
-    .append("title")
-    .text(d => `${d.typ_desc}\nHour: ${d.hour}:00\nCount: ${d.count}`);
+const g = svg.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // X axis
-  g.append("g")
-    .attr("transform", `translate(0,${cellHeight * categories.length})`)
-    .call(d3.axisBottom(xScale).tickFormat(d => `${d}:00`))
-    .selectAll("text")
-    .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end")
-    .style("color","#000")
+// Color scale
+const colorScale = d3.scaleSequential(d3.interpolateInferno)
+  .domain([0, d3.max(heatmapData, d => d.count)]);
 
+// X scale (hours)
+const xScale = d3.scaleBand()
+  .domain(hours)
+  .range([0, cellWidth * hours.length])
+  .padding(0.08);
 
-  // Y axis
-  g.append("g")
-    .call(d3.axisLeft(yScale))
-    .style("color","#000")
+// Y scale (typ_desc)
+const yScale = d3.scaleBand()
+  .domain(categories)
+  .range([0, cellHeight * categories.length])
+  .padding(0.08);
 
-  // Title
-  svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", margin.top / 2)
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("font-weight", "bold")
-    .text("Crime Type by Hour of Day");
+// Create heatmap cells 
+const cells = g.selectAll("rect")
+  .data(heatmapData)
+  .join("rect")
+  .attr("x", d => xScale(d.hour))
+  .attr("y", d => yScale(d.typ_desc))
+  .attr("width", xScale.bandwidth())
+  .attr("height", yScale.bandwidth())
+  .attr("fill", d => colorScale(d.count))
+  .attr("rx", 4)
+  .attr("ry", 4)
+  .attr("stroke", "#fff")
+  .attr("stroke-width", 1.5)
+  .attr("filter", "url(#cell-shadow)")
+  .style("cursor", "pointer")
+  .style("transition", "all 0.2s")
+  .on("mouseover", function(event, d) {
+    d3.select(this)
+      .attr("stroke", "#1e293b")
+      .attr("stroke-width", 3)
+    
+    // Show tooltip
+    tooltip.style("display", null)
+      .attr("transform", `translate(${xScale(d.hour) + xScale.bandwidth() / 2},${yScale(d.typ_desc) - 10})`);
+    
+    tooltip.select(".tooltip-count")
+      .text(`Count: ${d.count}`);
+    
+    tooltip.select(".tooltip-hour")
+      .text(`Hour: ${d.hour}:00`);
+  })
+  .on("mouseout", function() {
+    d3.select(this)
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("transform", "scale(1)");
+    
+    tooltip.style("display", "none");
+  });
 
-  display(svg.node());
-}
+// Create tooltip
+const tooltip = g.append("g")
+  .attr("class", "tooltip")
+  .style("display", "none")
+  .style("pointer-events", "none");
+
+tooltip.append("rect")
+  .attr("width", 100)
+  .attr("height", 45)
+  .attr("x", -50)
+  .attr("y", -50)
+  .attr("fill", "white")
+  .attr("stroke", "#cbd5e1")
+  .attr("stroke-width", 2)
+  .attr("rx", 6)
+  .attr("opacity", 0.95)
+  .attr("filter", "url(#cell-shadow)");
+
+tooltip.append("text")
+  .attr("class", "tooltip-count")
+  .attr("x", 0)
+  .attr("y", -32)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "12px")
+  .attr("font-weight", "600")
+  .attr("fill", "#1e293b")
+  .attr("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+tooltip.append("text")
+  .attr("class", "tooltip-hour")
+  .attr("x", 0)
+  .attr("y", -18)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "11px")
+  .attr("fill", "#475569")
+  .attr("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+// X axis
+const xAxis = g.append("g")
+  .attr("transform", `translate(0,${cellHeight * categories.length})`)
+  .call(d3.axisBottom(xScale).tickFormat(d => `${d}:00`));
+
+xAxis.selectAll("text")
+  .attr("transform", "rotate(-45)")
+  .style("text-anchor", "end")
+  .style("fill", "#475569")
+  .style("font-size", "11px")
+  .style("font-weight", "500")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+xAxis.select(".domain")
+  .style("stroke", "#94a3b8")
+  .style("stroke-width", "2px");
+
+xAxis.selectAll(".tick line")
+  .style("stroke", "#94a3b8");
+
+// X-axis label
+g.append("text")
+  .attr("x", (cellWidth * hours.length) / 2)
+  .attr("y", cellHeight * categories.length + 65)
+  .attr("text-anchor", "middle")
+  .style("font-size", "14px")
+  .style("font-weight", "600")
+  .style("fill", "#1e293b")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .text("Hour of Day");
+
+// Y axis
+const yAxis = g.append("g")
+  .call(d3.axisLeft(yScale));
+
+yAxis.selectAll("text")
+  .style("fill", "#475569")
+  .style("font-size", "11px")
+  .style("font-weight", "500")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+yAxis.select(".domain")
+  .style("stroke", "#94a3b8")
+  .style("stroke-width", "2px");
+
+yAxis.selectAll(".tick line")
+  .style("stroke", "#94a3b8");
+
+// Y-axis label
+g.append("text")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -(cellHeight * categories.length) / 2)
+  .attr("y", -140)
+  .attr("text-anchor", "middle")
+  .style("font-size", "14px")
+  .style("font-weight", "600")
+  .style("fill", "#1e293b")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .text("Incident Type");
+
+// Title
+svg.append("text")
+  .attr("x", width / 2)
+  .attr("y", 35)
+  .attr("text-anchor", "middle")
+  .style("font-size", "20px")
+  .style("font-weight", "700")
+  .style("fill", "#1e293b")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .text("Incident Patterns by Hour of Day");
+
+// Add subtitle
+svg.append("text")
+  .attr("x", width / 2)
+  .attr("y", 55)
+  .attr("text-anchor", "middle")
+  .style("font-size", "13px")
+  .style("font-weight", "400")
+  .style("fill", "#64748b")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .text("Heatmap showing incident frequency by type and time");
+
+// Create color legend
+const legendWidth = 20;
+const legendHeight = cellHeight * categories.length;
+const legendX = cellWidth * hours.length + 30;
+const legendY = 0;
+
+display(svg.node());
+
 ```
 
 <details>
