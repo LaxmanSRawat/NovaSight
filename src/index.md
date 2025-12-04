@@ -7,26 +7,34 @@ style: text-style.css
   <h2>Understanding Emergency Response Patterns to Criminal Activities in NYC</h2>
   <h3>A study by team Novasight <h3>
 </div>
-
+<div class="content">
 <h2> Introduction <h2>
 
-### Problem
+### The Problem
+New York City’s 911 system receives millions of calls annually and serves as the city’s primary pathway for emergency assistance this ranges from concerned regarding crime, disorder, medical distress, and even general public safety concerns. As a primary dispatch system for the NYPD, the system classifies each call, assesses for severity and deploys resources to meet demand. But behind these calls lies a difficult balancing act: public demand is rising while police staffing is shrinking. With precincts across the city operating below ideal capacity and dispatchers working under increasing pressure, understanding what New Yorkers actually call 911 for has never been more important.
 
-TBD
+Over the past few years, the NYPD has faced a steady wave of retirements and resignations. The department now loses roughly 300 officers each month, leading to one of the lowest staffing levels in decades [1]. At the same time:
+- Most 911 calls nationwide (≈ 63%) are non-criminal incidents [2]
+- Response times have increased as fewer officers handle more calls
+- Several precincts are becoming bottlenecks for call management
+This imbalance strains the entire response system.
 
-### Background
-
-New York City's 911 system receives millions of calls annually, serving as the primary emergency dispatch mechanism for the NYPD. 
+<img src="911-img.png" style="width:400px"></img>
 
 ### Motivation
 
-Through comprehensive data analysis, we examine how emergency services respond to criminal activities across the city's five boroughs, revealing patterns in call distribution, response times, and incident resolution.
+In light of increasing response times, shrinking police staffing, and rising non-critical call volume, this project aims to use data-driven analysis to uncover how 911 calls are distributed across New York City. By examining call types, severity, geographic concentration, and temporal trends, we seek to identify structural inefficiencies and highlight opportunities for more effective resource deployment and alternative response strategies.
 
 ### Overview of Findings
 
-TBD
+Our analysis reveals that New York City’s 911 system is driven more by high call volume than by high-severity emergencies. The majority of incidents fall into non-critical categories, with interpersonal disputes, harassment, disorderly conduct, and minor thefts representing a substantial share of all calls. These patterns vary significantly across boroughs: Brooklyn and the Bronx carry the heaviest burdens, with the Bronx exhibiting the longest call durations and Brooklyn generating a disproportionately high number of potential crime reports. Temporal analysis indicates highly predictable weekly cycles and consistent year-round demand, while precinct-level comparisons show that a small number of precincts account for a large share of incidents. Together, these findings highlight potential for targeted staffing, improved triage, and alternative response models.
 
 
+### Sources: 
+1. https://www.amny.com/news/nypd-attrition-crisis-longer-police-response-times/
+2. https://www.vera.org/news/most-911-calls-have-nothing-to-do-with-crime-why-are-we-still-sending-police
+
+</div>
 <!-- TO DO ### Why This Matters -->
 <!-- 
 ## Key Questions We Explore
@@ -91,7 +99,18 @@ TBD
 <style>
   .{
     font-family: 'Arial';
+    margin-right:auto;
+    margin-left:auto;
   }
+
+
+
+.content{
+display:flex;
+align-items:center;
+flex-direction:column;
+}
+
 
   .hero {
     display: flex;
@@ -101,6 +120,7 @@ TBD
     margin: 4rem 0 8rem;
     text-wrap: balance;
     text-align: center;
+
   }
 
   .hero h1 {
@@ -119,7 +139,7 @@ TBD
   .hero h2 {
     margin: 0;
     max-width: 34em;
-    font-size: 2vw;
+    font-size: 1.5vw;
     font-style: initial;
     font-weight: 500;
     line-height: 1.5;
