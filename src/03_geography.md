@@ -10,8 +10,6 @@ Insights and implications -->
 
 # Geographic Analysis
 
-## Which boroughs and precincts experience the highest volume of 911 calls?
-
 ```js
 // Load spatial files plus the aggregates generated from preprocessing notebooks
 const boroughBoundaries = await FileAttachment("nyc-borough-boundaries.geojson").json();
@@ -26,10 +24,12 @@ const callCategories = Array.from(new Set(boroughCounts.map(d => d.category)));
 const boroughNames = Array.from(new Set(boroughProfiles.map(d => d.boro_nm))).sort(d3.ascending);
 ```
 
-## Citywide load vs. service speed
+## How does 911 call volume relate to call duration and response delays across NYC boroughs?
 
-- **Call volume vs. median call duration** drives the axes, while bubble size reflects **arrival delay**.
-- Use the controls above to focus on a single call category (or compare both) and spotlight any borough via the selector.
+### Citywide load vs. service speed
+
+- This chart compares call volume (x-axis) with median call duration (y-axis), while bubble size represents arrival delay
+- Use the controls below to switch between call categories or highlight specific boroughs to see how service speed varies across the city
 
 ```js
 const scatterFocus = view(Inputs.radio(["All Categories", ...callCategories], {
@@ -420,8 +420,57 @@ display(scatterSvg.node());
 
 </details>
 
+### Analysis & Insights
 
-## Call intensity across boroughs
+<ol class="insight-list">
+  <li>Bronx and Queens appear in the upper part of the chart for both confirmed and potential crimes. They have the largest bubbles as well, indicating long call durations and long arrival delays
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      These boroughs form the clearest “service strain cluster,” where high incident complexity and slow on-scene response reinforce each other. They represent the most critical bottlenecks for system-wide performance
+    </div>
+  </li>
+  <li>Bronx (Potential Crime) sits noticeably higher than all other points (~70 min duration) with the largest bubble on the chart
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Ambiguous or escalating situations in the Bronx demand the most operator time and face the longest dispatch delays. This highlights a particularly vulnerable segment of 911 operations needing targeted intervention
+    </div>
+  </li>
+  <li>Brooklyn shows the largest gap in call volume between confirmed and potential crime categories (~113k calls)
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn’s surge in potential-crime calls indicates a heavy burden of ambiguous incidents that require operator attention. This imbalance suggests that the 911 load is driven more by community-reported concerns than confirmed emergencies. This could be good place to implement improved triage or automated screening tools that reduce operator workload without compromising public safety
+    </div>
+  </li>
+  <li>Brooklyn (Potential Crime) shows high call volume (~340k) but retains moderate call duration and a smaller bubble relative to Bronx and Queens
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn absorbs very large demand without proportional degradation in service speed. This suggests stronger dispatch capacity or more efficient field routing despite call volume being the highest on the chart
+    </div>
+  </li>
+  <li>Manhattan consistently sits at the bottom of the duration axis for both categories and shows some of the smallest bubbles
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Manhattan demonstrates superior operational efficiency. This is likely due to dense unit availability and compact geography. It serves as a benchmark borough for balancing workload and response speed
+    </div>
+  </li>
+  <li>Staten Island shows low call volume but relatively elevated call durations (~42-45 minutes) compared with Manhattan and Brooklyn
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Call resolution time in Staten Island isn't being driven by load but by structural factors like distance, limited staffing, or case types. Improving travel logistics or operator specialization would likely yield outsized gains here
+    </div>
+  </li>
+  <li>The spatial separation on the x-axis reveals a pattern: higher-volume boroughs (Brooklyn, Queens) do not uniformly experience the worst delays. Whereas lower-volume boroughs (Bronx for potential crime) can show the highest delays
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Service speed is not purely volume-driven. Borough-specific incident profiles and unit distribution matter more than raw call counts. Resource allocation should be complexity-adjusted, not just volume-adjusted
+    </div>
+  </li>
+</ol>
+
+
+## How does 911 call volume vary across boroughs?
+
+### 911 call volume by borough
 
 ```js
 const mapWidth = 420;
@@ -615,6 +664,41 @@ display(grid.node());
 ```
 
 </details>
+
+### Analysis & Insights
+
+<ol class="insight-list">
+  <li>Brooklyn has the highest call volume citywide by being the darkest-shaded borough in both confirmed and potential crime
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn carries the heaviest 911 demand overall. Such concentrated volume makes it a borough requiring strong triage and dispatch capacity (This aligns with Brooklyn’s placement in Chart 1)
+    </div>
+  </li>
+  <li>Manhattan shows the next-highest shading, with substantial call volume in both categories
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Manhattan maintains consistently high demand, reflecting dense population, business activity, and continuous mobility throughout the borough. Its elevated volume underscores the need for well-coordinated, high-frequency response coverage
+    </div>
+  </li>
+  <li>Queens is moderately dark, indicating high call volume but slightly lower than Manhattan and Brooklyn
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Queens handles a large share of citywide calls and contributes significantly to overall 911 workload. Managing this volume effectively requires broad coverage and scalable response strategies
+    </div>
+  </li>
+  <li>The Bronx displays lighter shading than the top three boroughs but still shows considerable call volume, especially for potential crime
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      The noticeable increase in potential-crime calls along with incident type helps explain why the borough exhibited longer durations and delays in Chart 1, despite not having the highest call count
+    </div>
+  </li>
+  <li>Staten Island is the lightest-shaded borough, with the lowest call volume in both maps
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Staten Island's low overall demand suggests a quieter operational environment compared to the other boroughs. Its main challenges likely stem from geography and travel distance rather than call overload
+    </div>
+  </li>
+</ol>
 
 
 ## Where is the mix shifting?
