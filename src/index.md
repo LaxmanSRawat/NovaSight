@@ -10,18 +10,16 @@ style: text-style.css
 <div class="content">
 <h2> Introduction <h2>
 
-### Problem
- In recent years, the NYPD has experienced a dramatic drop in staffing due to high rates of retirement and resignations: losing roughly 300 officers per month on average. This has led to the lowest headcount in decades, making precincts across the boroughs understaffed. This attrition has coincided with rising response times and increasing calls per officer [1].  ￼
- 
-At the same time, it is known that several 911 calls are attributed to non-critical incidents (an average of 62.6% in nationwide calls) [2]. This mismatch between high call volume (driven by social behaviour and public-safety concerns) and dwindling policing capacity creates a structural strain on emergency response, prompting a critical need to understand call patterns, allocate resources efficiently, and explore alternative response models.
+### The Problem
+New York City’s 911 system receives millions of calls annually and serves as the city’s primary pathway for emergency assistance this ranges from concerned regarding crime, disorder, medical distress, and even general public safety concerns. As a primary dispatch system for the NYPD, the system classifies each call, assesses for severity and deploys resources to meet demand. But behind these calls lies a difficult balancing act: public demand is rising while police staffing is shrinking. With precincts across the city operating below ideal capacity and dispatchers working under increasing pressure, understanding what New Yorkers actually call 911 for has never been more important.
 
-Sources: 
-1. https://www.amny.com/news/nypd-attrition-crisis-longer-police-response-times/
-2. https://www.vera.org/news/most-911-calls-have-nothing-to-do-with-crime-why-are-we-still-sending-police
+Over the past few years, the NYPD has faced a steady wave of retirements and resignations. The department now loses roughly 300 officers each month, leading to one of the lowest staffing levels in decades [1]. At the same time:
+- Most 911 calls nationwide (≈ 63%) are non-criminal incidents [2]
+- Response times have increased as fewer officers handle more calls
+- Several precincts are becoming bottlenecks for call management
+This imbalance strains the entire response system.
 
-### Background
-
-New York City’s 911 system receives millions of calls annually and serves as the city’s primary pathway for emergency assistance this ranges from concerned regarding crime, disorder, medical distress, and even general public safety concerns. As a primary dispatch system for the NYPD, the system classifies each call, assesses for severity and deploys resources to meet demand. Emergency calling behaviour varies widely across neighborhoods due to differences in population density, socioeconomic factors, community-police relations, and perceived threat levels. Understanding these dynamics is crucial for effective staffing, resource allocation, and the development of alternative response strategies. With rising national pressure on emergency systems and increasing reliance on police for non-criminal issues, analyzing NYC’s 911 trends provides valuable insights into both citizen behavior and operational strain.
+<img src="911-img.png" style="width:400px"></img>
 
 ### Motivation
 
@@ -30,6 +28,12 @@ In light of increasing response times, shrinking police staffing, and rising non
 ### Overview of Findings
 
 Our analysis reveals that New York City’s 911 system is driven more by high call volume than by high-severity emergencies. The majority of incidents fall into non-critical categories, with interpersonal disputes, harassment, disorderly conduct, and minor thefts representing a substantial share of all calls. These patterns vary significantly across boroughs: Brooklyn and the Bronx carry the heaviest burdens, with the Bronx exhibiting the longest call durations and Brooklyn generating a disproportionately high number of potential crime reports. Temporal analysis indicates highly predictable weekly cycles and consistent year-round demand, while precinct-level comparisons show that a small number of precincts account for a large share of incidents. Together, these findings highlight potential for targeted staffing, improved triage, and alternative response models.
+
+
+### Sources: 
+1. https://www.amny.com/news/nypd-attrition-crisis-longer-police-response-times/
+2. https://www.vera.org/news/most-911-calls-have-nothing-to-do-with-crime-why-are-we-still-sending-police
+
 </div>
 <!-- TO DO ### Why This Matters -->
 <!-- 
@@ -135,7 +139,7 @@ flex-direction:column;
   .hero h2 {
     margin: 0;
     max-width: 34em;
-    font-size: 2vw;
+    font-size: 1.5vw;
     font-style: initial;
     font-weight: 500;
     line-height: 1.5;

@@ -32,8 +32,9 @@ display(all_categories)
 
 <br>
 
+To understand what drives New York City’s emergency response system, we first analyzed the types of incidents that generate 911 calls. While the 911 system is often associated with serious, high-risk events, the data reveals a different reality: **the city’s call volume is overwhelmingly shaped by low-severity, high-frequency incidents.**
+
 ## What type of incidents are most common?
-### Visualisation 1: Radial Sunburst
 
 ```js 
 const rows = all_categories.map(d => ({ incident_main: d.incident_main.trim(), incident_sub: d.incident_sub.trim(), incident_subsub: d.incident_subsub.trim(), count: +d.count }));
@@ -352,11 +353,14 @@ const chart = (() => {
 
 <br>
 
-#### **Most common main incident categories**
-- **Other Crimes** (≈ 36.7%) – Largest share  
-- **Larceny** (≈ 27.0%)  
-- **Disorderly** (≈ 17.9%)  
-- **Assault** (≈ 16.2%)  
+## Insights
+
+#### The following categories make up the overwhelming majority of NYC’s 911 call activity:
+- **Other Crimes (~36.7%):** This category alone accounts for more than one-third of all recorded incidents. Its size reflects the broad range of relatively lower-severity complaints that residents report.
+- **Larceny (~27.0%):** Theft-related calls form the second-largest block, driven by both home thefts and outside thefts (non-transit).
+- **Disorderly (~17.9%):** Disturbance-related behavior—fights, noise complaints and public disorder.
+
+<div class="tip" label="Major Insight 💡"> NYC’s emergency call system is disproportionately shaped by frequent but relatively non-critical events. The prominence of Other Crimes reflects that 911 is often used for low-level disputes and public-order issues, not clear-cut criminal events. This is similar with Disorderly and Assault categories which represent mild disturbances to physical conflict. Assault, despite being serious, appears far less frequently than “Other Crimes,” underscoring how much 911 traffic is driven by low-intensity social disruptions. This indicates that NYPD might be functioning as a default responder for ambiguous or socially complex situations that may not require armed law enforcement. </div>
 
 #### **Notable subcategory patterns**
 - **Harassment** is the largest subcategory overall (≈ 21.3% of all incidents) and is the most common in *Other Crimes*.  
@@ -364,14 +368,13 @@ const chart = (() => {
 - **Disorderly incidents** are made up mostly of *Person* (13.0%) and *Group* (5.0%) disturbances.  
 - **Assault** is mostly categorised into 'Other' which further breaks into the most common assault types being Inside and Family Related.
 
-#### **Key insights**
-- The chart shows a highly **skewed distribution**, with a few subcategories—especially *Harassment*—making up a disproportionately large portion of total incidents.
-- Categories like **Assault** and **Disorderly** have **many small subtypes**, indicating more detailed diversity even if not high in volume.
-- **Robbery** appears relatively small overall, with its subcategories (Robbery, Other, etc.) each contributing only a couple of percent.  
-- Subcategories under **Other Crimes** vary widely in size, showing that “Other Crimes” is a catch-all group containing both very common and very rare incidents.
+<div class="tip" label="Major Insight 💡"> A substantial portion of 911 calls relate to ongoing interpersonal tension rather than acute emergencies (Harassment). Disordely incidents are largely composed of Person and Group disturbances which can be suggestive of overall public behavior and street-level tensions. Such calls may benefit more from civilian crisis teams, or social workers than police intervention. </div>
+<br>
 
-## What types of incidents are most common, and how do they vary by severity level? 
+Having understood how incident types are distributed, the next question is: how severe are these incidents? To explore this, we examine the severity levels associated with each main category.
 
+
+## How do incidents vary by severity level? 
 
 ```js 
 const countsFixed = crime_data.map(d => ({
@@ -394,7 +397,6 @@ const stackedData = (() => {
   });
 })();
 ```
-### Visualisation 2: Bar Chart
 
 ```js 
 const chart = (() => {
@@ -680,27 +682,18 @@ svg.append("g")
 </details>
 <br>
 
-### Findings and Insights:
-#### Observations
-1. Disorderly and Other-Crime Incident seems to be the least serious categories since all incidents are categorised as not in progress (Non CIP).
-2. Assault, Burglary, Larceny and Robbery are the only categories that have Critical Incidents.
-3. Assault and Larceny are the only categories that have Serious Incidents.
-4. Other Crimes is the only category that has incidents that are Not Critical even though this is the most common incident type.
-5. Disorderly, Larceny and other crimes get the most 'post incident occurrence' reporting since they have the highest Non-CIP cases.
-
-#### **Most common incidents**
-- Other Crimes
-- Larceny
-- Disorderly
-- Assault
-
+## Insights
 #### **Most severe incident categories**
 - Larceny — Highest number of Critical + Serious Incidents
 - Assault
 - Burglary  
 
+<div class="tip" label="Major Insight 💡">
 
-#### **Least common incidents**
-- Other-Crime Incident
-- Robbery
+1. Disorderly and Other-Crime Incident stand out as the least severe categories (similar to what we inferred earlier).
+Every incident within these groups is classified as Non-CIP (not in progress), meaning they typically reflect situations that have already ended, minor disturbances, or low-threat public concerns.
 
+2. Assault, Burglary, Larceny, and Robbery contain Critical Incidents, marking them as the primary contributors to high-urgency response workloads. These incidents are imminent or ongoing threats and therefore place the greatest demands on rapid police intervention.
+
+3. Larceny, Disorderly, and Other Crimes have the highest number of Non-CIP reports. This suggests these categories often involve victims or witnesses calling after the event has concluded. These call types inflate total workload without addressing immediate danger which can call for differentiated staffing strategies.
+</div>
