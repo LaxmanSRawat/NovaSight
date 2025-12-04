@@ -13,7 +13,13 @@ Insights and implications -->
 
 ## What is the average duration from call initiation to incident closure for the most common incident types? 
 
-
+  ```js 
+  const focusOptions = ["Crime", "Potential Crime"];
+  const callCategory = view(Inputs.radio(focusOptions, {
+    label: "Focus on call set",
+    value: "Crime"
+  }));
+  ```
 <br>
 
 <details>
@@ -21,14 +27,29 @@ Insights and implications -->
 
   Loading the top 10 crime and potential crime category by median of call duration (data processed using <a href="https://github.com/LaxmanSRawat/NovaSight/blob/main/temporal_analysis_top_10_category_by_average_total_duration.ipynb" rel="external">python jupyter notebook) </a>
 
+  ```js echo
+  file
+  ```
 
   ```js echo
   // Load top 10 crime category by call duration data
   const crime_top_10_categories_by_incident_duration = FileAttachment("nyc_data_crime_top_10_categories_by_call_duration.csv").csv({typed: true})
+  const potential_crime_top_10_categories_by_incident_duration = FileAttachment("nyc_data_potential_crime_top_10_categories_by_call_duration.csv").csv({typed: true})
+  const crime_bottom_10_categories_by_incident_duration = FileAttachment("nyc_data_crime_bottom_10_categories_by_call_duration.csv").csv({typed: true})
+  const potential_crime_bottom_10_categories_by_incident_duration = FileAttachment("nyc_data_potential_crime_bottom_10_categories_by_call_duration.csv").csv({typed: true})
+  
+   const data = callCategory == "Crime"
+  ? crime_top_10_categories_by_incident_duration
+  : potential_crime_top_10_categories_by_incident_duration;
+
+  const data_b10 = callCategory == "Crime"
+  ? crime_bottom_10_categories_by_incident_duration
+  : potential_crime_bottom_10_categories_by_incident_duration;
+
   ```
 
   ```js echo
-    crime_top_10_categories_by_incident_duration
+    data
   ```
 </details>
 
@@ -39,12 +60,12 @@ Insights and implications -->
 <!-- PLOT 1 -->
 ```js 
 // Set up dimensions
-const margin = { top: 50, right: 80, bottom: 70, left: 330 };
+const margin = { top: 50, right: 80, bottom: 70, left: callCategory === "Crime" ? 330:380 };
 const width = 900 - margin.left - margin.right;
 const height = 500 - margin.top - margin.bottom;
 
 // Group data by typ_desc
-const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
+const groupedData = d3.group(data, d => d.typ_desc);
 const boxPlotData = Array.from(groupedData, ([key, values]) => ({
   type: key,
   stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
@@ -181,7 +202,278 @@ g.append("text")
   .style("font-size", "18px")
   .style("font-weight", "700")
   .style("letter-spacing", "0.5px")
-  .text("Incident Duration Distribution by Type")
+  .text("Top 10 Incident by Avg. (Median) Incident Duration")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+// Color scale for boxes
+const colorScale = d3.scaleSequential(d3.interpolateViridis)
+  .domain([boxPlotData.length - 1, 0]);
+
+// Draw box plots with enhanced styling
+const boxHeight = yScale.bandwidth();
+
+boxPlotData.forEach((d, i) => {
+  const y = yScale(d.type);
+  const center = y + boxHeight / 2;
+  const boxColor = colorScale(i);
+
+  const boxGroup = g.append("g");
+
+  // Horizontal line from min to Q1
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.q1))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Horizontal line from Q3 to max
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.q3))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center)
+    .attr("y2", center)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2);
+
+  // Min vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.min))
+    .attr("x2", xScale(d.stats.min))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Max vertical line (whisker cap)
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.max))
+    .attr("x2", xScale(d.stats.max))
+    .attr("y1", center - boxHeight / 3.5)
+    .attr("y2", center + boxHeight / 3.5)
+    .attr("stroke", "#495057")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linecap", "round");
+
+  // Box shadow
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1) + 3)
+    .attr("y", y + 3)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", "#000")
+    .attr("opacity", 0.15)
+    .attr("rx", 4);
+
+  // Box (IQR) with gradient
+  const boxGradient = defs.append("linearGradient")
+    .attr("id", `boxGradient${i}`)
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "0%")
+    .attr("y2", "100%");
+
+  boxGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", d3.color(boxColor).brighter(0.3));
+
+  boxGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", boxColor);
+
+  boxGroup.append("rect")
+    .attr("x", xScale(d.stats.q1))
+    .attr("y", y)
+    .attr("width", xScale(d.stats.q3) - xScale(d.stats.q1))
+    .attr("height", boxHeight)
+    .attr("fill", `url(#boxGradient${i})`)
+    .attr("stroke", d3.color(boxColor).darker(0.5))
+    .attr("stroke-width", 2)
+    .attr("rx", 4);
+
+  // Median line with glow effect
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 4)
+    .attr("opacity", 0.8);
+
+  boxGroup.append("line")
+    .attr("x1", xScale(d.stats.median))
+    .attr("x2", xScale(d.stats.median))
+    .attr("y1", y)
+    .attr("y2", y + boxHeight)
+    .attr("stroke", "#212529")
+    .attr("stroke-width", 2.5);
+
+  // Outliers with better styling
+  d.stats.outliers.forEach(outlier => {
+    boxGroup.append("circle")
+      .attr("cx", xScale(outlier))
+      .attr("cy", center)
+      .attr("r", 4.5)
+      .attr("fill", "#dc3545")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("opacity", 0.8);
+  });
+});
+
+display(svg.node());
+```
+
+
+```js 
+// Set up dimensions
+const margin = { top: 50, right: 80, bottom: 70, left: callCategory === "Crime" ? 330:380 };
+const width = 900 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
+
+// Group data by typ_desc
+const groupedData = d3.group(data_b10, d => d.typ_desc);
+const boxPlotData = Array.from(groupedData, ([key, values]) => ({
+  type: key,
+  stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
+  values: values.map(d => d.call_duration_minutes)
+}));
+
+// Sort by median in descending order
+boxPlotData.sort((a, b) => b.stats.median - a.stats.median);
+
+// Create SVG with gradient background
+const svg = d3.create("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
+  .style("max-width", "100%")
+  .style("height", "auto");
+
+// Add gradient definition
+const defs = svg.append("defs");
+const gradient = defs.append("linearGradient")
+  .attr("id", "bgGradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "0%")
+  .attr("y2", "100%");
+
+gradient.append("stop")
+  .attr("offset", "0%")
+  .attr("stop-color", "#f8f9fa");
+
+gradient.append("stop")
+  .attr("offset", "100%")
+  .attr("stop-color", "#e9ecef");
+
+// Apply gradient background
+svg.append("rect")
+  .attr("width", "100%")
+  .attr("height", "100%")
+  .attr("fill", "url(#bgGradient)");
+
+const g = svg.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+// Create scales
+const yScale = d3.scaleBand()
+  .domain(boxPlotData.map(d => d.type))
+  .range([0, height])
+  .padding(0.35);
+
+const xScale = d3.scaleLinear()
+  .domain([0, d3.max(boxPlotData, d => d3.max([d.stats.max, ...d.stats.outliers]))])
+  .nice()
+  .range([0, width]);
+
+// Add subtle grid lines
+g.append("g")
+  .attr("class", "grid")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale)
+    .tickSize(-height)
+    .tickFormat("")
+  )
+  .style("stroke", "#7089a3ff")
+  .style("stroke-opacity", 0.8)
+  .style("stroke-dasharray", "3,3");
+
+// Create axes with improved styling
+g.append("g")
+  .attr("class", "x-axis")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScale).ticks(8))
+  .selectAll("text")
+  .style("font-size", "13px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#495057")
+  .style("font-weight", "500");
+
+g.select(".x-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
+
+g.select(".x-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
+
+g.append("g")
+  .attr("class", "y-axis")
+  .call(d3.axisLeft(yScale))
+  .selectAll("text")
+  .style("font-size", "12px")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif")
+  .style("fill", "#343a40")
+  .style("font-weight", "500");
+
+g.select(".y-axis")
+  .select(".domain")
+  .style("stroke", "#adb5bd")
+  .style("stroke-width", "2px");
+
+g.select(".y-axis")
+  .selectAll(".tick line")
+  .style("stroke", "#adb5bd");
+
+// Add axis labels with improved styling
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", height + margin.bottom - 15)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT DURATION (MINUTES)")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -height / 2)
+  .attr("y", -margin.left + 20)
+  .style("font-size", "15px")
+  .style("font-weight", "600")
+  .style("letter-spacing", "0.5px")
+  .text("INCIDENT TYPE")
+  .style("fill", "#212529")
+  .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+// Add title
+g.append("text")
+  .attr("text-anchor", "middle")
+  .attr("x", width / 2)
+  .attr("y", -20)
+  .style("font-size", "18px")
+  .style("font-weight", "700")
+  .style("letter-spacing", "0.5px")
+  .text("Bottom 10 Incident by Avg. (Median) Incident Duration")
   .style("fill", "#212529")
   .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
@@ -317,7 +609,7 @@ const width = 900 - margin.left - margin.right;
 const height = 500 - margin.top - margin.bottom;
 
 // Group data by typ_desc
-const groupedData = d3.group(crime_top_10_categories_by_incident_duration, d => d.typ_desc);
+const groupedData = d3.group(data, d => d.typ_desc);
 const boxPlotData = Array.from(groupedData, ([key, values]) => ({
   type: key,
   stats: calculateBoxPlotStats(values.map(d => d.call_duration_minutes)),
@@ -454,7 +746,7 @@ g.append("text")
   .style("font-size", "18px")
   .style("font-weight", "700")
   .style("letter-spacing", "0.5px")
-  .text("Incident Duration Distribution by Type")
+  .text("Top 10 Incident by Avg. (Median) Incident Duration")
   .style("fill", "#212529")
   .style("font-family", "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
 
@@ -579,16 +871,95 @@ boxPlotData.forEach((d, i) => {
 
 svg.node();
 ```
+
 </details>
+
 <br>
 
-### Analysis and Interpretations
+### Analysis & Insights 
 <br>
 
-### Insights and Implications
+### 1. Crime Category
 <br>
 
+#### Top 10 Incident by Median Duration
+* ASSAULT (IN PROGRESS): SHOTS/LTD ACC HWY leads with the longest median duration (~6 hrs) whereas LARCENY (PAST): OTHER/LTD ACC HWY shows the widest distribution, with median around ~8.5 hrs but extending to ~10 hrs
+
+<div class="tip" label="Insight 💡"> Highway-related incidents dominate the top positions, suggesting location complexity significantly impacts resolution time </div>
+
+* Child abuse cases appear multiple times across different assault categories, showing varying durations (200-400 minutes)
+* School-related incidents (burglary and larceny) show moderate durations with relatively tight distributions
+
+<div class="tip" label="Insight 💡"> Child abuse cases need specialized personnel and may involve child protective services, extending duration</div>
+
+* Several categories show extreme outliers extending to 1,400-1,600 minutes (23-27 hours)
+
+<div class="tip" label="Insight 💡"> The presence of outliers indicates that standard protocols can be disrupted by case complexity, evidence gathering needs, or inter-agency coordination</div>
+
+#### Bottom 10 Incident by Median Duration
+
+* Transit-related incidents dominate the bottom 10, with most showing median durations under 50 minutes
+* OTHER-CRIME INCIDENT: MARIJUANA/TRANSIT has the shortest median (~5-10 minutes)
+
+<div class="tip" label="Insight 💡"> Transit incidents are handled with exceptional speed, likely due to Specialized transit police units, well-established protocols, need to minimize service disruptions, contained, accessible environments</div>
+
+* Despite fast medians, many categories show extensive outliers (up to 1,500 minutes)
+* DISORDERLY: PERSON/TRANSIT and DISORDERLY: GROUP/TRANSIT have numerous outliers clustered around 200-400 minutes
+<div class="tip" label="Insight 💡"> The contrast between tight medians and distant outliers suggests most cases are routine, but complications can dramatically extend duration (10-20x normal duration)</div>
+
+
+### 2. Potential Crime Category
+<br>
+
+### Analysis & Insights
+<br>
+
+#### Top 10 Incident by Median Duration
+
+* SUSP LETTER: OUTSIDE leads with the longest median duration (4-5 hours)
+* INVESTIGATE/POSSIBLE CRIME: MARIJUANA/SCHOOL shows similar high median duration (~200-250 minutes)
+<div class="tip" label="Insight 💡"> Suspicious letter incidents require extensive protocols including hazmat assessment, evidence collection, area evacuation, and specialized unit deployment, significantly extending resolution time </div>
+
+
+* Location matters: "INSIDE" incidents tend to have longer durations than highway-related ones
+* School-related investigations show consistently high durations, suggesting thorough protocols for youth-involved cases
+<div class="tip" label="Insight 💡"> Holding suspects requires booking procedures, questioning, warrant checks, legal consultations, and transport arrangements - creating standardized 3-4 hour processing windows </div>
+
+
+* PO/SECURITY HOLDING SUSPECT: CIV CLOTHES/INSIDE and PO/SECURITY HOLDING SUSPECT: UNIFORM/INSIDE shows extreme outliers extending to 1,000 minutes (~17 hours)
+<div class="tip" label="Insight 💡"> Outliers in holding suspect cases suggest complications like: identifying uncooperative suspects, waiting for specialized detectives, warrant confirmations, or inter-jurisdictional transfers </div>
+
+#### Bottom 10 Incident by Median Duration
+
+
+* All bottom 10 incidents show median durations under 20 minutes - remarkably fast
+* Nine out of ten are transit-related, with medians clustered around 10-15 minutes
+
+<div class="tip" label="Insight 💡"> Transit and highway disputes are resolved with exceptional speed, likely due to: dedicated rapid response units, need to minimize public disruption, standardized de-escalation protocols, and accessible locations for quick officer deployment </div>
+
+* Weapons-related investigations (firearm, knife, shots fired) resolve faster than expected - all under 20 minutes median
+
+<div class="tip" label="Insight 💡"> Potential crimes that don't materialize into actual incidents are quickly assessed and cleared, suggesting efficient triage protocols that distinguish genuine threats from false alarms </div>
+
+* Despite ultra-fast medians, several categories show extreme outliers extending to 2,000-16,000 minutes (33-267 hours!)
+* INVESTIGATE/POSSIBLE CRIME Category has a dramatic outlier reaching at ~16,000 minutes (~11 days)
+
+<div class="tip" label="Insight 💡"> The extraordinary contrast between 10-minute medians and multi-day outliers indicates that while most potential crimes are quickly determined to be non-threats, rare cases evolve into extended investigations, evidence recovery operations, or ongoing surveillance activities </div>
+
+<br>
+
+
+<!-- Question 2 -->
 ## How have 911 call volumes and incident types changed over the year? 
+<br>
+
+  ```js 
+  const callCategory2 = view(Inputs.radio(focusOptions, {
+    label: "Focus on call set",
+    value: "Crime"
+  }));
+  ```
+
 <br>
 
 <details>
@@ -601,12 +972,23 @@ svg.node();
   ```js echo
   // Load the count of type description grouped by indcident date 
   const crime_data = FileAttachment("nyc_count_crime_type_by_date.csv").csv({typed: true})
+  
+  const potential_crime_data = FileAttachment("nyc_count_potential_crime_type_by_date.csv").csv({typed: true})
+  
+  const data2 = callCategory2 == "Crime"
+  ? crime_data
+  : potential_crime_data;
+
+  ```
+
+  ```js
+  data2
   ```
 
   <br>
 
   ```js echo
-  const crime_data_by_date_categorised = crime_data.map(d=> {
+  const crime_data_by_date_categorised = data2.map(d=> {
                         return {typ_desc: d.typ_desc.split('(')[0].split(':')[0].trim(), incident_date: d.incident_date, count: d.count}
 })
   ```
@@ -640,13 +1022,20 @@ svg.node();
   ```
 </details>
 
+```js 
+Swatches(d3.scaleOrdinal()
+  .domain(new Set(crime_data_by_date_categorised_arr_sorted.map(d => d.typ_desc)))
+  .range(d3.schemeCategory10))
+```
+
+
 <!-- Plot 2 -->
 ```js
 // Set Dimensions and Margins
 const width = 928;
 const height = 500;
 const marginTop = 60;
-const marginRight = 180;
+const marginRight = 60;
 const marginBottom = 60;
 const marginLeft = 60;
 
@@ -763,22 +1152,6 @@ linesGroup.selectAll("path")
     .attr("d", ([_, values]) => line(values))
     .attr("opacity", 0.85);
 
-// --- 4. Legend ---
-const legend = svg.append("g")
-    .attr("transform", `translate(${width - marginRight + 20}, ${marginTop})`);
-
-const legendItems = Array.from(groupedData.keys());
-legendItems.forEach((item, i) => {
-  const legendRow = legend.append("g").attr("transform", `translate(0, ${i * 28})`);
-  legendRow.append("line")
-      .attr("x1", 0).attr("x2", 20).attr("y1", 0).attr("y2", 0)
-      .attr("stroke", color(item)).attr("stroke-width", 3);
-  legendRow.append("text")
-      .attr("x", 28).attr("y", 4)
-      .attr("fill", "#334155")
-      .attr("font-size", "11px")
-      .text(item.length > 20 ? item.substring(0, 18) + '...' : item);
-});
 
 // --- 5. INTERACTION LOGIC ---
 
@@ -1153,16 +1526,65 @@ svg.node();
 
 <br>
 
-### Analysis and Interpretations
+### Analysis and Insights
 <br>
 
-### Insights and Implications
+#### 1. Crime Category
+
+* **OTHER CRIMES** consistently dominates with the highest incident count, ranging between 700-950 incidents daily throughout the year followed by **LARCENY** maintains the second position with 450-700 incidents daily. 
+* **ASSAULT** and **DISORDERLY** occupy the middle tier, both fluctuating between 250-450 incidents daily
+* **BURGLARY** and **ROBBERY** remain at the bottom with 50-150 incidents daily
+* **OTHER-CRIME INCIDENT** shows minimal activity, barely visible at the bottom of the chart
+
+<div class="tip" label="Insight 💡"> The consistent layering suggests stable crime category proportions, OTHER CRIMES represents ~35-40% of all incidents, while property crimes (larceny + burglary) combined account for ~30-35% of daily incidents </div>
+
+* Most crime categories show a synchronized rythm of increasing during the summer and autumn and then valleying during the winters and spring.
+* Most categories show elevated activity in late June/July and October, with OTHER CRIMES peaking near 950-1,000 incidents
+* All categories trend downward from late November through December, with notable drops on hodlidays (28th November and 24th December).
+
+<div class="tip" label="Insight 💡"> The winter drop may correlate with: less people staying outdoors, school being out of session (reducing certain incident types), vacation periods affecting reporting patterns, or holiday weekends. The late June/July and October spike could relate to return to school/work routines and seasonal factors </div>
+
+* OTHER CRIMES and ASSAULT show the most dramatic day-to-day fluctuations (swings of 100-200 incidents) while BURGLARY and ROBBERY show remarkably stable, flat trends with minimal variation
+
+<div class="tip" label="Insight 💡"> Property crimes (burglary, robbery) show consistent patterns suggesting professional/opportunistic crimes occur at steady rates, while person-based crimes (assault, disorderly conduct) are more sensitive to external factors like weather, events, and day-of-week effects </div>
+
+* All categories exhibit regular wave patterns suggesting strong day-of-week effects with OTHER CRIMES and LARCENY shows the most pronounced weekly cycling (for example, look at October month's pattern)
+
+<div class="tip" label="Insight 💡"> Regular weekly patterns indicate that certain crime types surge on specific days (likely weekends for disorderly conduct and assaults in entertainment districts, weekdays for larceny in commercial areas) </div>
+
+#### 2. Potential Crime Category
+
+* **INVESTIGATE/POSSIBLE CRIME** (red) overwhelmingly dominates with 1,400-2,200 incidents daily, representing approximately 60-70% of all potential crime incidents, followed by **DISPUTE** (orange) maintains steady second position at 600-900 incidents daily.
+* **ALARMS** (blue) occupies third tier with 200-600 incidents daily, showing significant variability
+* **All other categories** (PANIC ALARM, SUSP PACKAGE, SUSP LETTER, SUSP SUBSTANCE, etc.) remain compressed at the bottom with minimal activity (<100 incidents daily each)
+
+<div class="tip" label="Insight 💡"> The dramatic dominance of INVESTIGATE/POSSIBLE CRIME suggests most potential incidents require initial investigation but may not develop into confirmed crimes, this represents the "triage" layer of police response </div>
+
+* All categories show synchronized severe decline in the final two weeks of December, with INVESTIGATE/POSSIBLE CRIME dropping from ~1,800 to ~1,000 incidents
+* There is a notable spike around July 4th period, followed by increased fluctuations
+
+<div class="tip" label="Insight 💡"> The December collapse likely reflects: reduced civilian activity during holidays, fewer business operations, school closures, and potentially reduced reporting. The July spike may correlate with Independence Day celebrations generating more suspicious activity reports and fireworks-related calls </div>
+
+* Similar to crime category, pronounced 7-day oscillation pattern visible across all categories, particularly dramatic in INVESTIGATE/POSSIBLE CRIME
+* Exception to these are specialized categories (SUSP LETTER, EXPLOSIVE DEVICE, PANIC ALARM) remain remarkably flat with almost no visible variation
+
+<div class="tip" label="Insight 💡"> The extreme sawtooth pattern in INVESTIGATE/POSSIBLE CRIME strongly suggests weekend vs. weekday effects, likely massive drops on weekends (fewer businesses open, less foot traffic) with sharp Monday increases as commercial activity resumes </div>
+
 <br>
 
+<!-- Question 3 -->
 ## How does the distribution of call types vary throughout the day? 
 
 <br>
 
+  ```js 
+  const callCategory3 = view(Inputs.radio(focusOptions, {
+    label: "Focus on call set",
+    value: "Crime"
+  }));
+  ```
+
+  <br>
 
 <details>
   <summary> Data Loading </summary>
@@ -1174,12 +1596,16 @@ svg.node();
   ```js echo
   // Load the count of type description grouped by indcident time 
   const crime_data_by_time = FileAttachment("nyc_count_crime_type_by_time.csv").csv({typed: true})
+  const potential_crime_data_by_time = FileAttachment("nyc_count_potential_crime_type_by_time.csv").csv({typed: true})
+  
+  const data3 = callCategory3 === "Crime" ? crime_data_by_time:potential_crime_data_by_time;
+
   ```
 
   <br>
 
   ```js echo
-  const crime_data_by_time_categorised = crime_data_by_time.map(d=> {
+  const crime_data_by_time_categorised = data3.map(d=> {
                         return {typ_desc: d.typ_desc.split('(')[0].split(':')[0].trim(), incident_time: d.incident_time, count: d.count}
 })
 
@@ -1220,7 +1646,7 @@ Legend(d3.scaleSequential([0, d3.max(heatmapData.map(d => d.count))], d3.interpo
 
 ```js
 // Dimensions
-const margin = { top: 80, right: 150, bottom: 80, left: 160 };
+const margin = { top: 80, right: 150, bottom: 80, left: 240 };
 const cellWidth = 32;
 const cellHeight = 32;
 const width = cellWidth * hours.length + margin.left + margin.right;
@@ -1403,7 +1829,7 @@ yAxis.selectAll(".tick line")
 g.append("text")
   .attr("transform", "rotate(-90)")
   .attr("x", -(cellHeight * categories.length) / 2)
-  .attr("y", -140)
+  .attr("y", -200)
   .attr("text-anchor", "middle")
   .style("font-size", "14px")
   .style("font-weight", "600")
@@ -1529,9 +1955,34 @@ display(svg.node());
 </details>
 
 
-### Analysis and Interpretations
+### Analysis and Insights
+<br>
 
-### Insights and Implications
+#### 1. Crime Category
+
+* **OTHER CRIMES**: Most dramatic hourly variation - shows distinct hot zone from 14:00-20:00 (bright yellow/orange), then sharp decline after 21:00. **LARCENY** shows similar variation with evening elevation but less dramatic than Other Crimes.
+* **ASSAULT** and **DISORDERLY** show relatively consistent purple throughout day with moderate elevation during evening hours (18:00-23:00)
+* **BURGLARY** and **ROBBERY** show uniform dark coloring across all hours - minimal hourly variation
+
+<div class="tip" label="Insight 💡"> Property crimes split into two patterns: LARCENY (opportunistic theft) spikes when crowds and commerce peak, while BURGLARY remains constant suggesting it occurs regardless of time (targeting unoccupied properties, following opportunity rather than clock) </div>
+
+* All crime categories show maximum activity during late afternoon/evening (15:00-20:00) 5-hour window, with colors shifting to dark to brighter.
+* OTHER CRIMES shows the most intense concentration during peak hours (15:00-19:00), with the brightest yellow coloring indicating 10,000-15,000+ incidents
+* All categories show significantly reduced activity (dark purple/black) during early morning hours (00:00-06:00) Which gradually increase in activity as the city awakens, with noticeable transitions from dark to lighter purple (06:00-12:00)
+
+<div class="tip" label="Insight 💡"> The 15:00-20:00 peak aligns with: evening commute periods, school dismissal times, retail peak hours, transition from work to leisure activities, and maximum street population density - creating optimal conditions for various crime types </div>
+
+#### 2. Potential Crime Category 
+
+* **INVESTIGATE/POSSIBLE CRIME**: Shows extreme hourly variation - brightest yellow during 12:00-18:00 (peak of 40,000-50,000 incidents), then dramatic decline to near-zero overnight
+* **DISPUTE** shows relatively consistent purple throughout day with moderate elevation during afternoon/evening (14:00-20:00)
+* **ALARMS** stays remarkably uniform purple coloring across most hours, minimal variation except slight elevation during the start of business hours
+* **EXPLOSIVE DEVICE OR THREAT**, **SHOT SPOTTER**, and **SUSP PACKAGE** remains notably flat dark pattern with slight purple tint during business hours
+* **SEX OFFENDER HA ADDRESS VERIFY** Shows unique isolated at 02:00, 14:00, and 20:00 - suggesting scheduled verification processes.
+
+<div class="tip" label="Insight 💡"> The dramatic business-hour concentration suggests potential crime reports are heavily driven by civilian observation and reporting behavior - when people are active, alert, and in public/commercial spaces, they report more suspicious activity </div>
+
+<br>
 
 <details> 
 <summary> Appendix </summary>
@@ -1706,5 +2157,87 @@ function Legend(color, {
 
   return svg.node();
 }
+
+// Copyright 2021, Observable Inc.
+// Released under the ISC license.
+// https://observablehq.com/@d3/color-legend
+function Swatches(color, {
+  columns = null,
+  format,
+  unknown: formatUnknown,
+  swatchSize = 15,
+  swatchWidth = swatchSize,
+  swatchHeight = swatchSize,
+  marginLeft = 0
+} = {}) {
+  const id = `-swatches-${Math.random().toString(16).slice(2)}`;
+  const unknown = formatUnknown == null ? undefined : color.unknown();
+  const unknowns = unknown == null || unknown === d3.scaleImplicit ? [] : [unknown];
+  const domain = color.domain().concat(unknowns);
+  if (format === undefined) format = x => x === unknown ? formatUnknown : x;
+
+  function entity(character) {
+    return `&#${character.charCodeAt(0).toString()};`;
+  }
+
+  if (columns !== null) return htl.html`<div style="display: flex; align-items: center; margin-left: ${+marginLeft}px; min-height: 33px; font: 10px sans-serif;">
+  <style>
+
+.${id}-item {
+  break-inside: avoid;
+  display: flex;
+  align-items: center;
+  padding-bottom: 1px;
+}
+
+.${id}-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - ${+swatchWidth}px - 0.5em);
+}
+
+.${id}-swatch {
+  width: ${+swatchWidth}px;
+  height: ${+swatchHeight}px;
+  margin: 0 0.5em 0 0;
+}
+
+  </style>
+  <div style=${{width: "100%", columns}}>${domain.map(value => {
+    const label = `${format(value)}`;
+    return htl.html`<div class=${id}-item>
+      <div class=${id}-swatch style=${{background: color(value)}}></div>
+      <div class=${id}-label title=${label}>${label}</div>
+    </div>`;
+  })}
+  </div>
+</div>`;
+
+  return htl.html`<div style="display: flex; align-items: center; min-height: 33px; margin-left: ${+marginLeft}px; font: 10px sans-serif;">
+  <style>
+
+.${id} {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 1em;
+}
+
+.${id}::before {
+  content: "";
+  width: ${+swatchWidth}px;
+  height: ${+swatchHeight}px;
+  margin-right: 0.5em;
+  background: var(--color);
+}
+
+  </style>
+  <div>${domain.map(value => htl.html`<span class="${id}" style="--color: ${color(value)}">${format(value)}</span>`)}</div>`;
+}
+
+function swatches({color, ...options}) {
+  return Swatches(color, options);
+}
+
 ```
 </details>
