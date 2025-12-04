@@ -26,32 +26,31 @@ const callCategories = Array.from(new Set(boroughCounts.map(d => d.category)));
 const boroughNames = Array.from(new Set(boroughProfiles.map(d => d.boro_nm))).sort(d3.ascending);
 ```
 
-```js echo
-const focusOptions = ["All Categories", ...callCategories];
-const callCategory = view(Inputs.radio(focusOptions, {
-  label: "Focus on call set",
-  value: "All Categories"
-}));
-```
-
-```js echo
-const precinctBorough = view(Inputs.select(["Citywide", ...boroughNames], {
-  label: "Drill into a specific borough",
-  value: "Citywide"
-}));
-```
-
 ## Citywide load vs. service speed
 
 - **Call volume vs. median call duration** drives the axes, while bubble size reflects **arrival delay**.
 - Use the controls above to focus on a single call category (or compare both) and spotlight any borough via the selector.
 
+```js
+const scatterFocus = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+```
+
+```js
+const scatterBorough = view(Inputs.select(["Citywide", ...boroughNames], {
+  label: "Borough",
+  value: "Citywide"
+}));
+```
+
 ```js echo
 // Filter for whichever dataset is active; "All" shows both categories together
-const scatterData = callCategory === "All Categories"
+const scatterData = scatterFocus === "All Categories"
   ? boroughProfiles
-  : boroughProfiles.filter(d => d.category === callCategory);
-const selectedBorough = precinctBorough === "Citywide" ? null : precinctBorough;
+  : boroughProfiles.filter(d => d.category === scatterFocus);
+const selectedBorough = scatterBorough === "Citywide" ? null : scatterBorough;
 const scatterWidth = 960;
 const scatterHeight = 460;
 const scatterMargin = {top: 60, right: 160, bottom: 55, left: 80};
@@ -63,7 +62,7 @@ const scatterY = d3.scaleLinear()
   .range([scatterHeight - scatterMargin.bottom, scatterMargin.top]);
 const arrivalExtent = d3.extent(scatterData, d => d.median_arrival_delay);
 const scatterR = d3.scaleSqrt()
-  .domain([Math.max(1, arrivalExtent[0]), arrivalExtent[1]])
+  .domain([Math.max(1, arrivalExtent[0]), arrivalExtent[1] || Math.max(1, arrivalExtent[0]) + 1])
   .range([6, 24]);
 const scatterColor = d3.scaleOrdinal()
   .domain(callCategories)
@@ -153,7 +152,7 @@ const nodes = scatterSvg.append("g")
 
 nodes.append("circle")
   .attr("r", d => scatterR(d.median_arrival_delay))
-  .attr("fill", d => callCategory === "All Categories" ? scatterColor(d.category) : d.category === "Confirmed Crime" ? "#0f6cbd" : "#d1495b")
+  .attr("fill", d => scatterFocus === "All Categories" ? scatterColor(d.category) : d.category === "Confirmed Crime" ? "#0f6cbd" : "#d1495b")
   .attr("opacity", d => selectedBorough && d.boro_nm !== selectedBorough ? 0.3 : 0.95)
   .attr("stroke", d => d.boro_nm === selectedBorough ? "#000" : "#5d768d")
   .attr("stroke-width", d => d.boro_nm === selectedBorough ? 2 : 1)
@@ -189,7 +188,7 @@ nodes.append("text")
 const legend = scatterSvg.append("g")
   .attr("transform", `translate(${scatterWidth - scatterMargin.right / 5}, ${scatterMargin.top})`);
 
-if (callCategory === "All Categories") {
+if (scatterFocus === "All Categories") {
   callCategories.forEach((cat, i) => {
     const g = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
     g.append("rect")
@@ -207,7 +206,7 @@ if (callCategory === "All Categories") {
 }
 
 const sizeLegend = legend.append("g")
-  .attr("transform", `translate(0, ${callCategory === "All Categories" ? callCategories.length * 20 + 20 : 12})`);
+  .attr("transform", `translate(0, ${scatterFocus === "All Categories" ? callCategories.length * 20 + 20 : 12})`);
 
 const legendSizes = [arrivalExtent[0], d3.median(arrivalExtent), arrivalExtent[1]].map(d => Math.max(1, d));
 legendSizes.forEach((val, i) => {
@@ -244,18 +243,15 @@ const path = d3.geoPath(projection);
 const maxCalls = d3.max(boroughCounts, d => d.call_count);
 const mapColor = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, maxCalls]);
 
-// Render confirmed and potential choropleths side-by-side
+// Render confirmed and potential choropleths side-by-side (or single if selected)
 const grid = d3.create("div")
   .style("display", "grid")
   .style("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
   .style("gap", "1.5rem");
 
-const categoryColors = d3.scaleOrdinal()
-  .domain(callCategories)
-  .range(["#f5b041", "#c0392b"]);
+const selectedMaps = callCategories;
 
-for (const category of callCategories) {
-  // Each loop emits one SVG tile
+for (const category of selectedMaps) {
   const data = new Map(boroughCounts.filter(d => d.category === category).map(d => [d.boro_nm, d.call_count]));
   const svg = grid.append("svg")
     .attr("viewBox", [0, 0, mapWidth, mapHeight])
@@ -341,7 +337,7 @@ display(grid.node());
 - Visualizes **potential minus confirmed** call share, so positive areas lean toward potential-crime workload.
 - Values near zero mean similar shares; darker hues indicate boroughs with noticeable imbalances.
 
-```js echo
+```js
 // Compute share differences between potential and confirmed loads
 // Positive values indicate places leaning toward potential calls
 const shareMatrix = d3.rollup(
@@ -451,11 +447,25 @@ display(diffSvg.node());
 - Use the borough selector to focus on a specific area (or stay on “Citywide”) and inspect the busiest precincts.
 - The chart refreshes automatically as you toggle between confirmed vs. potential calls.
 
+```js
+const barCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+```
+
+```js
+const barBorough = view(Inputs.select(["Citywide", ...boroughNames], {
+  label: "Borough",
+  value: "Citywide"
+}));
+```
+
 ```js echo
 // Build the top precinct list for the active category/borough filter
 const precinctData = precinctCounts
-  .filter(d => (callCategory === "All Categories" || d.category === callCategory)
-    && (precinctBorough === "Citywide" || d.boro_nm === precinctBorough))
+  .filter(d => (barCategory === "All Categories" || d.category === barCategory)
+    && (barBorough === "Citywide" || d.boro_nm === barBorough))
   .sort((a, b) => d3.descending(a.call_count, b.call_count))
   .slice(0, 12);
 
@@ -532,9 +542,9 @@ precSvg.append("text")
   .attr("y", precMargin.top - 10)
   .attr("fill", "#000")
   .style("font-weight", "600")
-  .text(precinctBorough === "Citywide"
+  .text(barBorough === "Citywide"
     ? "Top precincts citywide"
-    : `Top precincts in ${precinctBorough}`);
+    : `Top precincts in ${barBorough}`);
 
 display(precSvg.node());
 ```
@@ -544,11 +554,18 @@ display(precSvg.node());
 
 ## When do borough workloads spike?
 
+```js
+const monthCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+```
+
 ```js echo
 const parseMonth = d3.utcParse("%Y-%m");
 // Monthly rollups for whichever category selection is active
 const monthData = boroughMonthly
-  .filter(d => callCategory === "All Categories" || d.category === callCategory)
+  .filter(d => monthCategory === "All Categories" || d.category === monthCategory)
   .map(d => ({
     ...d,
     date: d.incident_month instanceof Date ? d.incident_month : parseMonth(d.incident_month)
