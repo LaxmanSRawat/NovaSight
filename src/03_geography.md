@@ -18,7 +18,7 @@ const boroughCounts = (await FileAttachment("call_volume_by_borough.csv").csv({t
 const precinctCounts = await FileAttachment("call_volume_by_precinct.csv").csv({typed: true});
 const boroughProfiles = (await FileAttachment("borough_response_profile.csv").csv({typed: true}))
   .filter(d => d.boro_nm && d.boro_nm !== "(Null)");
-const boroughMonthly = (await FileAttachment("borough_monthly_call_counts.csv").csv({typed: true}))
+const boroughSeries = (await FileAttachment("borough_call_timeseries.csv").csv({typed: true}))
   .filter(d => d.boro_nm && d.boro_nm !== "(Null)");
 const callCategories = Array.from(new Set(boroughCounts.map(d => d.category)));
 const boroughNames = Array.from(new Set(boroughProfiles.map(d => d.boro_nm))).sort(d3.ascending);
@@ -701,10 +701,16 @@ display(grid.node());
 </ol>
 
 
-## Where is the mix shifting?
+## Where is the 911 call mix shifting?
 
-- Visualizes **potential minus confirmed** call share, so positive areas lean toward potential-crime workload.
-- Values near zero mean similar shares; darker hues indicate boroughs with noticeable imbalances.
+### Potential minus confirmed call share (%)
+
+- This map compares each borough’s share of all potential-crime calls to its share of all confirmed-crime calls in NYC
+- The value is computed as:<br>
+  `mix_shift = (potential_calls_borough / potential_calls_city) - (confirmed_calls_borough / confirmed_calls_city)`
+
+- Positive values (red) mean the borough contributes more potential-crime calls relative to confirmed
+- Negative values (blue) mean the borough contributes more confirmed-crime calls relative to potential
 
 ```js
 // Compute share differences between potential and confirmed loads
@@ -721,7 +727,7 @@ const shareDiff = new Map(
   boroughNames.map(name => [name, (potentialShares.get(name) || 0) - (confirmedShares.get(name) || 0)])
 );
 const diffExtent = d3.max([...shareDiff.values()].map(Math.abs));
-const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([-diffExtent, 0, diffExtent]);
+const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([diffExtent, 0, -diffExtent]);
 
 const diffWidth = 700;
 const diffHeight = 520;
@@ -826,7 +832,7 @@ const shareDiff = new Map(
   boroughNames.map(name => [name, (potentialShares.get(name) || 0) - (confirmedShares.get(name) || 0)])
 );
 const diffExtent = d3.max([...shareDiff.values()].map(Math.abs));
-const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([-diffExtent, 0, diffExtent]);
+const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([diffExtent, 0, -diffExtent]);
 
 const diffWidth = 700;
 const diffHeight = 520;
@@ -914,218 +920,561 @@ display(diffSvg.node());
 
 </details>
 
+### Analysis & Insights
 
-## Drill into precinct workloads
+<ol class="insight-list">
+  <li>Brooklyn is the deepest red region, which means its share of potential-crime calls is much higher than its share of confirmed-crime calls
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn carries a disproportionately large share of the city’s potential-crime workload. This suggests that ambiguous or low-information incidents play an outsized role in Brooklyn’s 911 volume
+    </div>
+  </li>
+  <li>Staten Island and Queens also lean red, but less intensely
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      While the shift isn’t large, it still indicates a slightly higher proportion of uncertain or exploratory calls compared to confirmed incidents
+    </div>
+  </li>
+  <li>The Bronx and Manhattan appear in blue, which means their share of confirmed-crime calls is higher relative to their share of potential-crime calls
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Even though both boroughs have more potential calls than confirmed in absolute terms, they contribute proportionally more confirmed incidents to the city total. This suggests a call mix that is more skewed toward verifiable, actionable events
+    </div>
+  </li>
+</ol>
 
-- Use the borough selector to focus on a specific area (or stay on “Citywide”) and inspect the busiest precincts.
-- The chart refreshes automatically as you toggle between confirmed vs. potential calls.
+
+## Where are the precinct-level hotspots of call volume?
+
+### Precinct-level 911 Hotspots
+
+- Precincts are shaded by their total 911 call volume. Darker colors indicate higher workload across all call types 
+- Call volume is computed as the count of all calls assigned to each precinct. This is mapped geographically to highlight intensity patterns that borough-level views cannot show
 
 ```js
-const barCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+const precinctMapCategory = view(Inputs.radio(["All Categories", ...callCategories], {
   label: "Call set",
   value: "All Categories"
 }));
 ```
 
 ```js
-const barBorough = view(Inputs.select(["Citywide", ...boroughNames], {
-  label: "Borough",
-  value: "Citywide"
-}));
-```
+const precinctGeo = await FileAttachment("NYPD_Precincts.geojson").json();
 
-```js
-// Build the top precinct list for the active category/borough filter
-const precinctData = precinctCounts
-  .filter(d => (barCategory === "All Categories" || d.category === barCategory)
-    && (barBorough === "Citywide" || d.boro_nm === barBorough))
-  .sort((a, b) => d3.descending(a.call_count, b.call_count))
-  .slice(0, 12);
+const precinctMapWidth = 900;
+const precinctMapHeight = 700;
+const precinctPadding = 30;
+const precinctMapColor = d3.scaleSequential(d3.interpolateYlOrRd);
 
-const precMargin = {top: 35, right: 30, bottom: 30, left: 220};
-const precWidth = 960;
-const precHeight = Math.max(precinctData.length * 28 + precMargin.top + precMargin.bottom, 260);
-const precX = d3.scaleLinear()
-  .domain([0, d3.max(precinctData, d => d.call_count)]).nice()
-  .range([precMargin.left, precWidth - precMargin.right]);
-const precY = d3.scaleBand()
-  .domain(precinctData.map(d => `${d.nypd_pct_cd} • ${d.boro_nm}`))
-  .range([precMargin.top, precHeight - precMargin.bottom])
-  .padding(0.25);
+const precinctProjection = d3.geoMercator()
+  .fitExtent(
+    [[precinctPadding, precinctPadding + 20], [precinctMapWidth - precinctPadding, precinctMapHeight - precinctPadding - 30]],
+    precinctGeo
+  );
+const precinctPath = d3.geoPath(precinctProjection);
 
-const precSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, precWidth, precHeight])
-  .attr("width", precWidth)
-  .attr("height", precHeight)
+const mapData = new Map(
+  precinctCounts
+    .filter(d => precinctMapCategory === "All Categories" || d.category === precinctMapCategory)
+    .map(d => [d.nypd_pct_cd, d.call_count])
+);
+
+const maxPrecCalls = d3.max(mapData.values());
+precinctMapColor.domain([0, maxPrecCalls]);
+
+const precinctSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, precinctMapWidth, precinctMapHeight])
+  .attr("width", precinctMapWidth)
+  .attr("height", precinctMapHeight)
   .style("max-width", "100%")
   .style("height", "auto")
   .style("background", "#dfdfd6");
 
-const precInnerHeight = precHeight - precMargin.top - precMargin.bottom;
-precSvg.append("g")
-  .attr("transform", `translate(0, ${precHeight - precMargin.bottom})`)
-  .call(d3.axisBottom(precX).ticks(6, "~s").tickSize(-precInnerHeight).tickFormat(""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-precSvg.append("line")
-  .attr("x1", precMargin.left)
-  .attr("x2", precWidth - precMargin.right)
-  .attr("y1", precHeight - precMargin.bottom)
-  .attr("y2", precHeight - precMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.3);
-
-precSvg.append("line")
-  .attr("x1", precMargin.left)
-  .attr("x2", precMargin.left)
-  .attr("y1", precMargin.top)
-  .attr("y2", precHeight - precMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.3);
-
-precSvg.append("g")
-  .selectAll("rect")
-  .data(precinctData)
-  .join("rect")
-  .attr("x", precMargin.left)
-  .attr("y", d => precY(`${d.nypd_pct_cd} • ${d.boro_nm}`))
-  .attr("width", d => precX(d.call_count) - precMargin.left)
-  .attr("height", precY.bandwidth())
-  .attr("fill", "#0f6cbd")
+precinctSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", precinctPath)
+  .attr("fill", d => precinctMapColor(mapData.get(d.properties.Precinct) || 0))
+  .attr("stroke", "#fff")
+  .attr("stroke-width", 1.2)
   .append("title")
-  .text(d => `${d.nypd_pct_cd} (${d.boro_nm})
-${d.call_count.toLocaleString()} calls`);
+  .text(d => {
+    const pct = d.properties.Precinct;
+    const calls = mapData.get(pct) || 0;
+    return `Precinct ${pct}\n${calls.toLocaleString()} calls`;
+  });
 
-precSvg.append("g")
-  .attr("transform", `translate(0, ${precHeight - precMargin.bottom})`)
-  .call(d3.axisBottom(precX).ticks(6, "~s"))
+// Borough outlines for context
+precinctSvg.append("g")
+  .selectAll("path")
+  .data(boroughBoundaries.features)
+  .join("path")
+  .attr("d", precinctPath)
+  .attr("fill", "none")
+  .attr("stroke", "#333")
+  .attr("stroke-width", 2.5);
+
+// Legend
+const legWidth = 260;
+const legHeight = 12;
+const legMargin = {left: 40, top: 60};
+
+const legScale = d3.scaleLinear()
+  .domain(precinctMapColor.domain())
+  .range([0, legWidth]);
+
+const defs = precinctSvg.append("defs");
+const gradId = "precinctGrad";
+const gradient = defs.append("linearGradient")
+  .attr("id", gradId)
+  .attr("x1", "0%").attr("x2", "100%")
+  .attr("y1", "0%").attr("y2", "0%");
+
+for (let i = 0; i <= 10; i++) {
+  const t = i / 10;
+  gradient.append("stop")
+    .attr("offset", `${t * 100}%`)
+    .attr("stop-color", precinctMapColor(legScale.invert(t * legWidth)));
+}
+
+const legend = precinctSvg.append("g")
+  .attr("transform", `translate(${legMargin.left}, ${legMargin.top + 14})`);
+
+legend.append("rect")
+  .attr("width", legWidth)
+  .attr("height", legHeight)
+  .attr("fill", `url(#${gradId})`)
+  .attr("stroke", "#333");
+
+legend.append("g")
+  .attr("transform", `translate(0, ${legHeight})`)
+  .call(d3.axisBottom(legScale).ticks(5, "~s"))
   .selectAll("text")
   .style("fill", "#000");
 
-precSvg.append("g")
-  .attr("transform", `translate(${precMargin.left},0)`)
-  .call(d3.axisLeft(precY))
-  .selectAll("text")
-  .style("fill", "#000");
+legend.append("text")
+  .attr("x", 0)
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Call volume per precinct");
 
-precSvg.append("text")
-  .attr("x", precMargin.left)
-  .attr("y", precMargin.top - 10)
+precinctSvg.append("text")
+  .attr("x", legMargin.left)
+  .attr("y", legMargin.top - 16)
+  .attr("text-anchor", "start")
   .attr("fill", "#000")
   .style("font-weight", "600")
-  .text(barBorough === "Citywide"
-    ? "Top precincts citywide"
-    : `Top precincts in ${barBorough}`);
+  .style("font-size", "18px")
+  .text("Precinct call volume (2024)");
 
-display(precSvg.node());
+display(precinctSvg.node());
 ```
 
 <details>
 <summary>Code</summary>
 
 ```javascript
-// Build the top precinct list for the active category/borough filter
-const precinctData = precinctCounts
-  .filter(d => (barCategory === "All Categories" || d.category === barCategory)
-    && (barBorough === "Citywide" || d.boro_nm === barBorough))
-  .sort((a, b) => d3.descending(a.call_count, b.call_count))
-  .slice(0, 12);
+const precinctMapCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
 
-const precMargin = {top: 35, right: 30, bottom: 30, left: 220};
-const precWidth = 960;
-const precHeight = Math.max(precinctData.length * 28 + precMargin.top + precMargin.bottom, 260);
-const precX = d3.scaleLinear()
-  .domain([0, d3.max(precinctData, d => d.call_count)]).nice()
-  .range([precMargin.left, precWidth - precMargin.right]);
-const precY = d3.scaleBand()
-  .domain(precinctData.map(d => `${d.nypd_pct_cd} • ${d.boro_nm}`))
-  .range([precMargin.top, precHeight - precMargin.bottom])
-  .padding(0.25);
+const precinctGeo = await FileAttachment("NYPD_Precincts.geojson").json();
 
-const precSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, precWidth, precHeight])
-  .attr("width", precWidth)
-  .attr("height", precHeight)
+const precinctMapWidth = 900;
+const precinctMapHeight = 780;
+const precinctMapColor = d3.scaleSequential(d3.interpolateYlOrRd);
+const precinctPadding = 30;
+
+const precinctProjection = d3.geoMercator()
+  .fitExtent(
+    [[precinctPadding, precinctPadding + 20], [precinctMapWidth - precinctPadding, precinctMapHeight - precinctPadding]],
+    precinctGeo
+  );
+const precinctPath = d3.geoPath(precinctProjection);
+
+const mapData = new Map(
+  precinctCounts
+    .filter(d => precinctMapCategory === "All Categories" || d.category === precinctMapCategory)
+    .map(d => [d.nypd_pct_cd, d.call_count])
+);
+
+const maxPrecCalls = d3.max(mapData.values());
+precinctMapColor.domain([0, maxPrecCalls]);
+
+const precinctSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, precinctMapWidth, precinctMapHeight])
+  .attr("width", precinctMapWidth)
+  .attr("height", precinctMapHeight)
   .style("max-width", "100%")
   .style("height", "auto")
   .style("background", "#dfdfd6");
 
-const precInnerHeight = precHeight - precMargin.top - precMargin.bottom;
-precSvg.append("g")
-  .attr("transform", `translate(0, ${precHeight - precMargin.bottom})`)
-  .call(d3.axisBottom(precX).ticks(6, "~s").tickSize(-precInnerHeight).tickFormat(""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-precSvg.append("line")
-  .attr("x1", precMargin.left)
-  .attr("x2", precWidth - precMargin.right)
-  .attr("y1", precHeight - precMargin.bottom)
-  .attr("y2", precHeight - precMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.3);
-
-precSvg.append("line")
-  .attr("x1", precMargin.left)
-  .attr("x2", precMargin.left)
-  .attr("y1", precMargin.top)
-  .attr("y2", precHeight - precMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.3);
-
-precSvg.append("g")
-  .selectAll("rect")
-  .data(precinctData)
-  .join("rect")
-  .attr("x", precMargin.left)
-  .attr("y", d => precY(`${d.nypd_pct_cd} • ${d.boro_nm}`))
-  .attr("width", d => precX(d.call_count) - precMargin.left)
-  .attr("height", precY.bandwidth())
-  .attr("fill", "#0f6cbd")
-  .append("title")
-  .text(d => `${d.nypd_pct_cd} (${d.boro_nm})
-${d.call_count.toLocaleString()} calls`);
-
-precSvg.append("g")
-  .attr("transform", `translate(0, ${precHeight - precMargin.bottom})`)
-  .call(d3.axisBottom(precX).ticks(6, "~s"))
-  .selectAll("text")
-  .style("fill", "#000");
-
-precSvg.append("g")
-  .attr("transform", `translate(${precMargin.left},0)`)
-  .call(d3.axisLeft(precY))
-  .selectAll("text")
-  .style("fill", "#000");
-
-precSvg.append("text")
-  .attr("x", precMargin.left)
-  .attr("y", precMargin.top - 10)
+precinctSvg.append("text")
+  .attr("x", precinctMapWidth / 2)
+  .attr("y", 32)
+  .attr("text-anchor", "middle")
   .attr("fill", "#000")
   .style("font-weight", "600")
-  .text(barBorough === "Citywide"
-    ? "Top precincts citywide"
-    : `Top precincts in ${barBorough}`);
+  .style("font-size", "18px")
+  .text("Precinct call volume (2024)");
 
-display(precSvg.node());
+precinctSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", precinctPath)
+  .attr("fill", d => precinctMapColor(mapData.get(d.properties.Precinct) || 0))
+  .attr("stroke", "#fff")
+  .attr("stroke-width", 1.2)
+  .append("title")
+  .text(d => {
+    const pct = d.properties.Precinct;
+    const calls = mapData.get(pct) || 0;
+    return `Precinct ${pct}\n${calls.toLocaleString()} calls`;
+  });
+
+precinctSvg.append("g")
+  .selectAll("path")
+  .data(boroughBoundaries.features)
+  .join("path")
+  .attr("d", precinctPath)
+  .attr("fill", "none")
+  .attr("stroke", "#333")
+  .attr("stroke-width", 2.5);
+
+const legWidth = 260;
+const legHeight = 12;
+const legMargin = {left: 40, top: 60};
+
+const legScale = d3.scaleLinear()
+  .domain(precinctMapColor.domain())
+  .range([0, legWidth]);
+
+const defs = precinctSvg.append("defs");
+const gradId = "precinctGrad";
+const gradient = defs.append("linearGradient")
+  .attr("id", gradId)
+  .attr("x1", "0%").attr("x2", "100%")
+  .attr("y1", "0%").attr("y2", "0%");
+
+for (let i = 0; i <= 10; i++) {
+  const t = i / 10;
+  gradient.append("stop")
+    .attr("offset", `${t * 100}%`)
+    .attr("stop-color", precinctMapColor(legScale.invert(t * legWidth)));
+}
+
+const legend = precinctSvg.append("g")
+  .attr("transform", `translate(${legMargin.left}, ${legMargin.top})`);
+
+legend.append("rect")
+  .attr("width", legWidth)
+  .attr("height", legHeight)
+  .attr("fill", `url(#${gradId})`)
+  .attr("stroke", "#333");
+
+legend.append("g")
+  .attr("transform", `translate(0, ${legHeight})`)
+  .call(d3.axisBottom(legScale).ticks(5, "~s"))
+  .selectAll("text")
+  .style("fill", "#000");
+
+legend.append("text")
+  .attr("x", 0)
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Call volume per precinct");
+
+display(precinctSvg.node());
 ```
 
 </details>
 
+### Analysis & Insights
 
-## When do borough workloads spike?
+<ol class="insight-list">
+  <li>Precinct-level variation within boroughs is far greater than borough averages suggest
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      The workload is not evenly distributed even in high-volume boroughs like Brooklyn and Queens. Some precincts face double or triple the call volume of adjacent areas, signaling where resource allocation can have the greatest impact
+    </div>
+  </li>
+  <li>Call volume is heavily concentrated in central and southeastern Brooklyn. Several precincts exceed 20k+ calls
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn’s role as the city’s largest call generator becomes even clearer at the precinct level. High-density residential areas and major transit corridors drive sustained 911 demand
+    </div>
+  </li>
+  <li>Northern Queens, the South Bronx, and Uptown Manhattan show elevated precinct volumes
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      These regions form secondary hotspots of 911 activity. They reflect mixed residential-commercial zones, large transit hubs, and busy public spaces. Both confirmed and potential-crime calls tend to cluster in these environments
+    </div>
+  </li>
+  <li>Staten Island precincts are consistently among the lowest-volume areas
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      The wide geographic coverage and lower population density result in far fewer calls compared with the rest of the city. This supports earlier observations that Staten Island’s operational challenges stem more from travel distance and coverage rather than raw call intensity
+    </div>
+  </li>
+</ol>
+
+## When do borough workloads spike throughout the year?
+
+### Temporal Patterns in 911 Call Volume
+
+- Each line tracks call volume over time for every borough, revealing seasonal trends (monthly), recurring cycles (weekly), and day-to-day variability (daily)
+- The chart highlights how workload intensity rises or falls across the calendar, helping identify predictable peaks that inform staffing and scheduling
 
 ```js
 const monthCategory = view(Inputs.radio(["All Categories", ...callCategories], {
   label: "Call set",
   value: "All Categories"
 }));
+
+const timeInterval = view(Inputs.radio(["Monthly", "Weekly", "Daily"], {
+  label: "Time granularity",
+  value: "Monthly"
+}));
 ```
 
 ```js
+const parseDate = d3.utcParse("%Y-%m-%d");
+const intervalKey = timeInterval.toLowerCase();
+
+// Filter for the selected interval and category, then aggregate if "All Categories"
+let monthData = boroughSeries
+  .filter(d => d.interval === intervalKey)
+  .map(d => ({
+    ...d,
+    date: d.date instanceof Date ? d.date : parseDate(d.date)
+  }))
+  .filter(d => d.date && d.boro_nm);
+
+if (monthCategory !== "All Categories") {
+  monthData = monthData.filter(d => d.category === monthCategory);
+} else {
+  monthData = d3.rollups(
+    monthData,
+    v => d3.sum(v, d => d.call_count),
+    d => d.boro_nm,
+    d => +d.date
+  ).flatMap(([boro, entries]) =>
+    entries.map(([ts, total]) => ({ boro_nm: boro, date: new Date(Number(ts)), call_count: total }))
+  );
+}
+
+// Drop trailing partial periods so weekly/daily views don't show partial tails
+const maxDate = d3.max(monthData, d => d.date);
+const trimDays = timeInterval === "Weekly" ? 7 : timeInterval === "Daily" ? 3 : 0;
+if (maxDate && trimDays) {
+  const cutoff = d3.utcDay.offset(maxDate, -trimDays);
+  monthData = monthData.filter(d => d.date <= cutoff);
+}
+
+const monthSeries = d3.groups(monthData, d => d.boro_nm)
+  .map(([boro, values]) => ({boro, values: values.sort((a, b) => d3.ascending(a.date, b.date))}));
+
+const monthWidth = 960;
+const monthHeight = 500;
+const monthMargin = {top: 60, right: 93, bottom: 70, left: 60};
+const monthX = d3.scaleUtc()
+  .domain(d3.extent(monthData, d => d.date))
+  .range([monthMargin.left, monthWidth - monthMargin.right]);
+const monthY = d3.scaleLinear()
+  .domain([0, d3.max(monthData, d => d.call_count)]).nice()
+  .range([monthHeight - monthMargin.bottom, monthMargin.top]);
+const monthColor = d3.scaleOrdinal()
+  .domain(boroughNames)
+  .range(d3.schemeSet2);
+
+const titleCategory = monthCategory === "All Categories" ? "All Categories" : monthCategory;
+const titleText = `${timeInterval} · ${titleCategory}`;
+
+const monthSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, monthWidth, monthHeight])
+  .attr("width", monthWidth)
+  .attr("height", monthHeight)
+  .style("max-width", "100%")
+  .style("height", "auto")
+  .style("background", "#dfdfd6");
+
+const monthInnerHeight = monthHeight - monthMargin.top - monthMargin.bottom;
+const monthInnerWidth = monthWidth - monthMargin.left - monthMargin.right;
+const tickCount = timeInterval === "Daily" ? 8 : timeInterval === "Weekly" ? 10 : 6;
+let weekIndex = null;
+if (timeInterval === "Weekly") {
+  const weeks = Array.from(new Set(monthData.map(d => +d.date))).sort((a, b) => a - b);
+  weekIndex = new Map(weeks.map((ts, i) => [ts, i + 1]));
+}
+
+monthSvg.append("g")
+  .attr("transform", `translate(0, ${monthHeight - monthMargin.bottom})`)
+  .call(d3.axisBottom(monthX).ticks(tickCount).tickSize(-monthInnerHeight).tickFormat(""))
+  .selectAll("line")
+  .attr("stroke", "#bfbfbf")
+  .attr("stroke-dasharray", "3,3");
+
+monthSvg.append("g")
+  .attr("transform", `translate(${monthMargin.left},0)`)
+  .call(d3.axisLeft(monthY).ticks(5).tickSize(-monthInnerWidth).tickFormat(""))
+  .selectAll("line")
+  .attr("stroke", "#bfbfbf")
+  .attr("stroke-dasharray", "3,3");
+
+monthSvg.append("line")
+  .attr("x1", monthMargin.left)
+  .attr("x2", monthWidth - monthMargin.right)
+  .attr("y1", monthHeight - monthMargin.bottom)
+  .attr("y2", monthHeight - monthMargin.bottom)
+  .attr("stroke", "#000")
+  .attr("stroke-width", 1.4);
+
+monthSvg.append("line")
+  .attr("x1", monthMargin.left)
+  .attr("x2", monthMargin.left)
+  .attr("y1", monthMargin.top)
+  .attr("y2", monthHeight - monthMargin.bottom)
+  .attr("stroke", "#000")
+  .attr("stroke-width", 1.4);
+
+monthSvg.append("text")
+  .attr("x", monthMargin.left)
+  .attr("y", monthMargin.top - 8)
+  .attr("fill", "#000")
+  .style("font-weight", "700")
+  .style("font-size", "16px")
+  .text(titleText);
+
+const line = d3.line()
+  .x(d => monthX(d.date))
+  .y(d => monthY(d.call_count));
+
+const monthPaths = monthSvg.append("g")
+  .attr("fill", "none")
+  .attr("stroke-width", 2)
+  .attr("stroke-linejoin", "round")
+  .attr("stroke-linecap", "round")
+  .selectAll("path")
+  .data(monthSeries)
+  .join("path")
+  .attr("stroke", d => monthColor(d.boro))
+  .attr("d", d => line(d.values));
+
+monthSvg.append("g")
+  .attr("transform", `translate(0, ${monthHeight - monthMargin.bottom})`)
+  .call(d3.axisBottom(monthX).ticks(tickCount))
+  .selectAll("text")
+  .style("fill", "#000");
+
+monthSvg.append("g")
+  .attr("transform", `translate(${monthMargin.left},0)`)
+  .call(d3.axisLeft(monthY).ticks(5, "~s"))
+  .selectAll("text")
+  .style("fill", "#000");
+
+monthSvg.append("text")
+  .attr("x", monthMargin.left + (monthWidth - monthMargin.left - monthMargin.right) / 2)
+  .attr("y", monthHeight - monthMargin.bottom / 2)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Date");
+
+monthSvg.append("text")
+  .attr("x", -monthHeight / 2)
+  .attr("y", monthMargin.left / 2)
+  .attr("transform", "rotate(-90)")
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Calls");
+
+const legendSpacing = 110;
+const legendWidth = boroughNames.length * legendSpacing;
+const legendX = monthWidth / 2 - legendWidth / 2;
+const legendY = 12;
+const monthLegend = monthSvg.append("g")
+  .attr("transform", `translate(${legendX}, ${legendY})`);
+
+boroughNames.forEach((boro, i) => {
+  const g = monthLegend.append("g").attr("transform", `translate(${i * legendSpacing}, 0)`);
+  g.append("line")
+    .attr("x1", 0)
+    .attr("x2", 20)
+    .attr("y1", 6)
+    .attr("y2", 6)
+    .attr("stroke", monthColor(boro))
+    .attr("stroke-width", 3);
+  g.append("text")
+    .attr("x", 26)
+    .attr("y", 10)
+    .attr("fill", "#000")
+    .style("font-size", "12px")
+    .text(boro);
+});
+
+const dateFmtMonth = d3.timeFormat("%B");
+const dateFmtDay = d3.timeFormat("%Y-%m-%d");
+const monthPoints = monthData.map(d => {
+  const weekNum = weekIndex ? weekIndex.get(+d.date) : null;
+  const label = timeInterval === "Weekly"
+    ? `Week ${weekNum}`
+    : timeInterval === "Monthly"
+      ? dateFmtMonth(d.date)
+      : dateFmtDay(d.date);
+  return [monthX(d.date), monthY(d.call_count), d.boro_nm, label, d.call_count];
+});
+const monthFocus = monthSvg.append("g").attr("display", "none");
+monthFocus.append("circle").attr("r", 5).attr("fill", "#000");
+const monthLabel = monthFocus.append("text")
+  .attr("text-anchor", "start")
+  .attr("x", 9)
+  .attr("y", -8)
+  .attr("fill", "#000")
+  .style("font-size", "12px");
+
+monthSvg
+  .on("pointerenter", () => monthFocus.attr("display", null))
+  .on("pointermove", event => {
+    const [xm, ym] = d3.pointer(event);
+    const i = d3.leastIndex(monthPoints, ([x, y]) => Math.hypot(x - xm, y - ym));
+    const [x, y, boro, month, count] = monthPoints[i];
+    monthFocus.attr("transform", `translate(${x}, ${y})`);
+    monthLabel.text(boro);
+    monthLabel.selectAll("tspan").remove();
+    monthLabel.append("tspan")
+      .attr("x", 9)
+      .attr("dy", 14)
+      .text(month);
+    monthLabel.append("tspan")
+      .attr("x", 9)
+      .attr("dy", 14)
+      .text(count.toLocaleString());
+    monthPaths.attr("stroke-opacity", d => d.boro === boro ? 1 : 0.25)
+      .attr("stroke-width", d => d.boro === boro ? 3.5 : 1.5);
+  })
+  .on("pointerleave", () => {
+    monthFocus.attr("display", "none");
+    monthPaths.attr("stroke-opacity", 1).attr("stroke-width", 2);
+  });
+
+display(monthSvg.node());
+```
+
+<details>
+<summary>Code</summary>
+
+```javascript
+const monthCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+
 const parseMonth = d3.utcParse("%Y-%m");
 // Monthly rollups for whichever category selection is active
 const monthData = boroughMonthly
@@ -1141,7 +1490,7 @@ const monthSeries = d3.groups(monthData, d => d.boro_nm)
 
 const monthWidth = 960;
 const monthHeight = 500;
-const monthMargin = {top: 30, right: 20, bottom: 40, left: 60};
+const monthMargin = {top: 60, right: 120, bottom: 70, left: 60};
 const monthX = d3.scaleUtc()
   .domain(d3.extent(monthData, d => d.date))
   .range([monthMargin.left, monthWidth - monthMargin.right]);
@@ -1151,6 +1500,9 @@ const monthY = d3.scaleLinear()
 const monthColor = d3.scaleOrdinal()
   .domain(boroughNames)
   .range(d3.schemeSet2);
+
+const titleCategory = monthCategory === "All Categories" ? "All Categories" : monthCategory;
+const titleText = `${timeInterval} · ${titleCategory}`;
 
 const monthSvg = d3.create("svg")
   .attr("viewBox", [0, 0, monthWidth, monthHeight])
@@ -1193,157 +1545,13 @@ monthSvg.append("line")
   .attr("stroke", "#000")
   .attr("stroke-width", 1.4);
 
-const line = d3.line()
-  .x(d => monthX(d.date))
-  .y(d => monthY(d.call_count));
-
-const monthPaths = monthSvg.append("g")
-  .attr("fill", "none")
-  .attr("stroke-width", 2)
-  .attr("stroke-linejoin", "round")
-  .attr("stroke-linecap", "round")
-  .selectAll("path")
-  .data(monthSeries)
-  .join("path")
-  .attr("stroke", d => monthColor(d.boro))
-  .attr("d", d => line(d.values));
-
-monthSvg.append("g")
-  .attr("transform", `translate(0, ${monthHeight - monthMargin.bottom})`)
-  .call(d3.axisBottom(monthX).ticks(6))
-  .selectAll("text")
-  .style("fill", "#000");
-
-monthSvg.append("g")
-  .attr("transform", `translate(${monthMargin.left},0)`)
-  .call(d3.axisLeft(monthY).ticks(5, "~s"))
-  .selectAll("text")
-  .style("fill", "#000");
-
-const monthLegend = monthSvg.append("g")
-  .attr("transform", `translate(${monthMargin.left}, ${monthMargin.top})`);
-
-boroughNames.forEach((boro, i) => {
-  const g = monthLegend.append("g").attr("transform", `translate(${(i % 3) * 180}, ${Math.floor(i / 3) * 18})`);
-  g.append("line")
-    .attr("x1", 0)
-    .attr("x2", 20)
-    .attr("y1", 6)
-    .attr("y2", 6)
-    .attr("stroke", monthColor(boro))
-    .attr("stroke-width", 3);
-  g.append("text")
-    .attr("x", 26)
-    .attr("y", 10)
-    .attr("fill", "#000")
-    .style("font-size", "12px")
-    .text(boro);
-});
-
-const monthPoints = monthData.map(d => [monthX(d.date), monthY(d.call_count), d.boro_nm, d.incident_month, d.call_count]);
-const monthFocus = monthSvg.append("g").attr("display", "none");
-monthFocus.append("circle").attr("r", 5).attr("fill", "#000");
-const monthLabel = monthFocus.append("text")
-  .attr("text-anchor", "start")
-  .attr("x", 9)
-  .attr("y", -8)
+monthSvg.append("text")
+  .attr("x", monthMargin.left)
+  .attr("y", monthMargin.top - 8)
   .attr("fill", "#000")
-  .style("font-size", "12px");
-
-monthSvg
-  .on("pointerenter", () => monthFocus.attr("display", null))
-  .on("pointermove", event => {
-    const [xm, ym] = d3.pointer(event);
-    const i = d3.leastIndex(monthPoints, ([x, y]) => Math.hypot(x - xm, y - ym));
-    const [x, y, boro, month, count] = monthPoints[i];
-    monthFocus.attr("transform", `translate(${x}, ${y})`);
-    monthLabel.text(`${boro} · ${month}: ${count.toLocaleString()}`);
-    monthPaths.attr("stroke-opacity", d => d.boro === boro ? 1 : 0.25)
-      .attr("stroke-width", d => d.boro === boro ? 3.5 : 1.5);
-  })
-  .on("pointerleave", () => {
-    monthFocus.attr("display", "none");
-    monthPaths.attr("stroke-opacity", 1).attr("stroke-width", 2);
-  });
-
-display(monthSvg.node());
-```
-
-<details>
-<summary>Code</summary>
-
-```javascript
-const monthCategory = view(Inputs.radio(["All Categories", ...callCategories], {
-  label: "Call set",
-  value: "All Categories"
-}));
-
-const parseMonth = d3.utcParse("%Y-%m");
-// Monthly rollups for whichever category selection is active
-const monthData = boroughMonthly
-  .filter(d => monthCategory === "All Categories" || d.category === monthCategory)
-  .map(d => ({
-    ...d,
-    date: d.incident_month instanceof Date ? d.incident_month : parseMonth(d.incident_month)
-  }))
-  .filter(d => d.date);
-
-const monthSeries = d3.groups(monthData, d => d.boro_nm)
-  .map(([boro, values]) => ({boro, values: values.sort((a, b) => d3.ascending(a.date, b.date))}));
-
-const monthWidth = 960;
-const monthHeight = 500;
-const monthMargin = {top: 30, right: 20, bottom: 40, left: 60};
-const monthX = d3.scaleUtc()
-  .domain(d3.extent(monthData, d => d.date))
-  .range([monthMargin.left, monthWidth - monthMargin.right]);
-const monthY = d3.scaleLinear()
-  .domain([0, d3.max(monthData, d => d.call_count)]).nice()
-  .range([monthHeight - monthMargin.bottom, monthMargin.top]);
-const monthColor = d3.scaleOrdinal()
-  .domain(boroughNames)
-  .range(d3.schemeSet2);
-
-const monthSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, monthWidth, monthHeight])
-  .attr("width", monthWidth)
-  .attr("height", monthHeight)
-  .style("max-width", "100%")
-  .style("height", "auto")
-  .style("background", "#dfdfd6");
-
-const monthInnerHeight = monthHeight - monthMargin.top - monthMargin.bottom;
-const monthInnerWidth = monthWidth - monthMargin.left - monthMargin.right;
-
-monthSvg.append("g")
-  .attr("transform", `translate(0, ${monthHeight - monthMargin.bottom})`)
-  .call(d3.axisBottom(monthX).ticks(6).tickSize(-monthInnerHeight).tickFormat(""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-monthSvg.append("g")
-  .attr("transform", `translate(${monthMargin.left},0)`)
-  .call(d3.axisLeft(monthY).ticks(5).tickSize(-monthInnerWidth).tickFormat(""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-monthSvg.append("line")
-  .attr("x1", monthMargin.left)
-  .attr("x2", monthWidth - monthMargin.right)
-  .attr("y1", monthHeight - monthMargin.bottom)
-  .attr("y2", monthHeight - monthMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.4);
-
-monthSvg.append("line")
-  .attr("x1", monthMargin.left)
-  .attr("x2", monthMargin.left)
-  .attr("y1", monthMargin.top)
-  .attr("y2", monthHeight - monthMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.4);
+  .style("font-weight", "700")
+  .style("font-size", "16px")
+  .text(titleText);
 
 const line = d3.line()
   .x(d => monthX(d.date))
@@ -1372,11 +1580,32 @@ monthSvg.append("g")
   .selectAll("text")
   .style("fill", "#000");
 
+monthSvg.append("text")
+  .attr("x", monthMargin.left + (monthWidth - monthMargin.left - monthMargin.right) / 2)
+  .attr("y", monthHeight - monthMargin.bottom / 2)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Date");
+
+monthSvg.append("text")
+  .attr("x", -monthHeight / 2)
+  .attr("y", monthMargin.left / 2)
+  .attr("transform", "rotate(-90)")
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Calls");
+
+const legendSpacing = 110;
+const legendWidth = boroughNames.length * legendSpacing;
+const legendX = monthWidth / 2 - legendWidth / 2;
+const legendY = 12;
 const monthLegend = monthSvg.append("g")
-  .attr("transform", `translate(${monthMargin.left}, ${monthMargin.top})`);
+  .attr("transform", `translate(${legendX}, ${legendY})`);
 
 boroughNames.forEach((boro, i) => {
-  const g = monthLegend.append("g").attr("transform", `translate(${(i % 3) * 180}, ${Math.floor(i / 3) * 18})`);
+  const g = monthLegend.append("g").attr("transform", `translate(${i * legendSpacing}, 0)`);
   g.append("line")
     .attr("x1", 0)
     .attr("x2", 20)
@@ -1392,7 +1621,17 @@ boroughNames.forEach((boro, i) => {
     .text(boro);
 });
 
-const monthPoints = monthData.map(d => [monthX(d.date), monthY(d.call_count), d.boro_nm, d.incident_month, d.call_count]);
+const dateFmtMonth = d3.timeFormat("%B");
+const dateFmtDay = d3.timeFormat("%Y-%m-%d");
+const monthPoints = monthData.map(d => {
+  const weekNum = weekIndex ? weekIndex.get(+d.date) : null;
+  const label = timeInterval === "Weekly"
+    ? `Week ${weekNum}`
+    : timeInterval === "Monthly"
+      ? dateFmtMonth(d.date)
+      : dateFmtDay(d.date);
+  return [monthX(d.date), monthY(d.call_count), d.boro_nm, label, d.call_count];
+});
 const monthFocus = monthSvg.append("g").attr("display", "none");
 monthFocus.append("circle").attr("r", 5).attr("fill", "#000");
 const monthLabel = monthFocus.append("text")
@@ -1409,7 +1648,16 @@ monthSvg
     const i = d3.leastIndex(monthPoints, ([x, y]) => Math.hypot(x - xm, y - ym));
     const [x, y, boro, month, count] = monthPoints[i];
     monthFocus.attr("transform", `translate(${x}, ${y})`);
-    monthLabel.text(`${boro} · ${month}: ${count.toLocaleString()}`);
+    monthLabel.text(boro);
+    monthLabel.selectAll("tspan").remove();
+    monthLabel.append("tspan")
+      .attr("x", 9)
+      .attr("dy", 14)
+      .text(month);
+    monthLabel.append("tspan")
+      .attr("x", 9)
+      .attr("dy", 14)
+      .text(count.toLocaleString());
     monthPaths.attr("stroke-opacity", d => d.boro === boro ? 1 : 0.25)
       .attr("stroke-width", d => d.boro === boro ? 3.5 : 1.5);
   })
@@ -1422,3 +1670,44 @@ display(monthSvg.node());
 ```
 
 </details>
+
+### Analysis & Insights
+
+#### Overall pattern
+
+- Stable, repeatable seasonal structure rather than dramatic spikes across all boroughs  
+- Volumes rise slightly mid-year, stay steady through fall, and dip at year-end (especially in weekly trends)  
+- Demand is driven by routine and high-frequency calls, not episodic surges
+
+<ol class="insight-list">
+  <li>Brooklyn consistently sits at the top across monthly, weekly, and daily timelines. It shows a small but steady mid-year increase
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Brooklyn’s workload is persistently high rather than sharply seasonal. Its slight summer uptick reflects increased public activity but the main story is sustained volume. Staffing models need to be built around continuous high baseline demand, not event-driven spikes
+    </div>
+  </li>
+  <li>Manhattan and Queens track closely together, showing moderate increases in mid-year months and stable weekly cycles
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      These boroughs exhibit predictable, smooth variations (no abrupt surges). This suggests that their demand is shaped by routine population flow (commuters, business districts, and residential density). This predictability supports regularized scheduling, where shift timing rather than surge capacity becomes key
+    </div>
+  </li>
+  <li>The Bronx shows lower day-to-day volatility compared with Manhattan and Brooklyn
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Bronx call patterns have no large oscillations. This indicates a steady residential-driven workload, where incremental changes can be anticipated and resource adjustments can be planned in advance
+    </div>
+  </li>
+  <li>Staten Island remains the lowest-volume and minimal variation borough at all temporal scales
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Workload in Staten Island is highly stable and low amplitude. Operational needs here are more about coverage and travel time than call spikes, reinforcing earlier conclusions that volume is not the borough’s primary constraint
+    </div>
+  </li>
+  <li>Daily and weekly charts reveal cyclical noise. There is no evidence of extreme surges or crisis-level spikes in any borough
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Despite large population differences, boroughs follow relatively consistent patterns with manageable fluctuations. This suggests a 911 system driven more by routine, high-frequency incidents than by episodic shocks
+    </div>
+  </li>
+</ol>
