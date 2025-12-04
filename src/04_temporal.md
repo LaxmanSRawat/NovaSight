@@ -1540,7 +1540,7 @@ svg.node();
 
 * Most crime categories show a synchronized rhythm of increasing during the summer and autumn and then valleying during the winters and spring.
 * Most categories show elevated activity in late June/July and October, with OTHER CRIMES peaking near 950-1,000 incidents
-* All categories trend downward from late November through December, with notable drops on hodlidays (28th November and 24th December).
+* All categories trend downward from late November through December, with notable drops on holidays (28th November and 24th December).
 
 <div class="tip" label="Insight 💡"> The winter drop may correlate with: less people staying outdoors, school being out of session (reducing certain incident types), vacation periods affecting reporting patterns, or holiday weekends. The late June/July and October spike could relate to return to school/work routines and seasonal factors </div>
 
