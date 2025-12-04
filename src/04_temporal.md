@@ -1538,7 +1538,7 @@ svg.node();
 
 <div class="tip" label="Insight 💡"> The consistent layering suggests stable crime category proportions, OTHER CRIMES represents ~35-40% of all incidents, while property crimes (larceny + burglary) combined account for ~30-35% of daily incidents </div>
 
-* Most crime categories show a synchronized rythm of increasing during the summer and autumn and then valleying during the winters and spring.
+* Most crime categories show a synchronized rhythm of increasing during the summer and autumn and then valleying during the winters and spring.
 * Most categories show elevated activity in late June/July and October, with OTHER CRIMES peaking near 950-1,000 incidents
 * All categories trend downward from late November through December, with notable drops on hodlidays (28th November and 24th December).
 
