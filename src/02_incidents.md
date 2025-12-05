@@ -688,7 +688,9 @@ svg.append("g")
 - Assault
 - Burglary  
 
-<div class="insight"><strong>Insight 💡</strong><br> 1. Disorderly and Other-Crime Incident stand out as the least severe categories (similar to what we inferred earlier).
+<div class="insight"><strong>Insight 💡</strong><br> 
+
+1. Disorderly and Other-Crime Incident stand out as the least severe categories (similar to what we inferred earlier).
 Every incident within these groups is classified as Non-CIP (not in progress), meaning they typically reflect situations that have already ended, minor disturbances, or low-threat public concerns.
 
 2. Assault, Burglary, Larceny, and Robbery contain Critical Incidents, marking them as the primary contributors to high-urgency response workloads. These incidents are imminent or ongoing threats and therefore place the greatest demands on rapid police intervention.
