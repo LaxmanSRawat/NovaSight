@@ -7,6 +7,20 @@ style: text-style.css
 ### Based on Incident Analysis
 
 ### Based on Geographical Analysis
+* ⁠Brooklyn carries the heaviest 911 workload, while Manhattan handles high volume with relatively efficient response performance.
+* ⁠Precinct-level patterns reveal strong internal variation: central Brooklyn, northern Queens, the South Bronx, and uptown Manhattan emerge as consistent hotspots.
+* Staten Island records the lowest call volume but experiences structurally slow response times due to distance, coverage, and roadway limitations.
+* Potential-crime calls dominate citywide and place disproportionate strain on Brooklyn and Queens.
+* Arrival-delay mapping shows that slow precincts are not always high-volume ones. This indicates routing, road networks, and unit distribution strongly shape response speed.
+* Temporal patterns are stable and predictable, with mid-year increases and year-end declines.
+
+#### Recommendations
+Police departments should 
+* Allocate staffing based on incident complexity and delay risk, not just call volume.
+* Improve routing and coverage in structurally slow precincts such as Staten Island, Eastern Queens, and Southern Brooklyn.
+* Replicate effective deployment models from fast, high-volume areas like Midtown Manhattan, Bronx 44, and Brooklyn 61.
+* Adjust staffing schedules to match predictable temporal peaks, particularly summer months.
+* Strengthen triage processes for potential-crime calls to reduce operator load in Brooklyn and Queens
 
 ### Based on Temporal Analaysis
 Crime and potential crime incidents exhibit clear temporal patterns with -
