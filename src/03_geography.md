@@ -16,6 +16,8 @@ const boroughBoundaries = await FileAttachment("nyc-borough-boundaries.geojson")
 const boroughCounts = (await FileAttachment("call_volume_by_borough.csv").csv({typed: true}))
   .filter(d => d.boro_nm && d.boro_nm !== "(Null)");
 const precinctCounts = await FileAttachment("call_volume_by_precinct.csv").csv({typed: true});
+const precinctProfiles = (await FileAttachment("precinct_response_profile.csv").csv({typed: true}))
+  .filter(d => d.nypd_pct_cd > 0 && d.boro_nm && d.boro_nm !== "(null)" && d.boro_nm !== "(Null)");
 const boroughProfiles = (await FileAttachment("borough_response_profile.csv").csv({typed: true}))
   .filter(d => d.boro_nm && d.boro_nm !== "(Null)");
 const boroughSeries = (await FileAttachment("borough_call_timeseries.csv").csv({typed: true}))
@@ -24,7 +26,7 @@ const callCategories = Array.from(new Set(boroughCounts.map(d => d.category)));
 const boroughNames = Array.from(new Set(boroughProfiles.map(d => d.boro_nm))).sort(d3.ascending);
 ```
 
-## How does 911 call volume relate to call duration and response delays across NYC boroughs?
+## How does 911 call volume relate to call duration and response delays across boroughs?
 
 ### Citywide load vs. service speed
 
@@ -230,196 +232,6 @@ legendSizes.forEach((val, i) => {
 display(scatterSvg.node());
 ```
 
-<details>
-<summary>Code</summary>
-
-```javascript
-// Filter for whichever dataset is active; "All" shows both categories together
-const scatterData = scatterFocus === "All Categories"
-  ? boroughProfiles
-  : boroughProfiles.filter(d => d.category === scatterFocus);
-const selectedBorough = scatterBorough === "Citywide" ? null : scatterBorough;
-const scatterWidth = 960;
-const scatterHeight = 460;
-const scatterMargin = {top: 60, right: 160, bottom: 55, left: 80};
-const scatterX = d3.scaleLinear()
-  .domain([0, d3.max(scatterData, d => d.call_count) * 1.05]).nice()
-  .range([scatterMargin.left, scatterWidth - scatterMargin.right]);
-const scatterY = d3.scaleLinear()
-  .domain([0, d3.max(scatterData, d => d.median_call_duration) * 1.15]).nice()
-  .range([scatterHeight - scatterMargin.bottom, scatterMargin.top]);
-const arrivalExtent = d3.extent(scatterData, d => d.median_arrival_delay);
-const scatterR = d3.scaleSqrt()
-  .domain([Math.max(1, arrivalExtent[0]), arrivalExtent[1] || Math.max(1, arrivalExtent[0]) + 1])
-  .range([6, 24]);
-const scatterColor = d3.scaleOrdinal()
-  .domain(callCategories)
-  .range(["#0f6cbd", "#d1495b"]);
-
-// Scaffold the SVG with margins and backgrounds
-const scatterSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, scatterWidth, scatterHeight])
-  .attr("width", scatterWidth)
-  .attr("height", scatterHeight)
-  .style("max-width", "100%")
-  .style("height", "auto")
-  .style("background", "#dfdfd6");
-
-const scatterInnerWidth = scatterWidth - scatterMargin.left - scatterMargin.right;
-const scatterInnerHeight = scatterHeight - scatterMargin.top - scatterMargin.bottom;
-
-// Horizontal grid lines
-scatterSvg.append("g")
-  .attr("transform", `translate(0, ${scatterHeight - scatterMargin.bottom})`)
-  .call(d3.axisBottom(scatterX).ticks(5, "~s").tickSize(-scatterInnerHeight).tickFormat(() => ""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-// Vertical grid lines
-scatterSvg.append("g")
-  .attr("transform", `translate(${scatterMargin.left},0)`)
-  .call(d3.axisLeft(scatterY).ticks(5).tickSize(-scatterInnerWidth).tickFormat(() => ""))
-  .selectAll("line")
-  .attr("stroke", "#bfbfbf")
-  .attr("stroke-dasharray", "3,3");
-
-// Solid x-axis baseline
-scatterSvg.append("line")
-  .attr("x1", scatterMargin.left)
-  .attr("x2", scatterWidth - scatterMargin.right)
-  .attr("y1", scatterHeight - scatterMargin.bottom)
-  .attr("y2", scatterHeight - scatterMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.4);
-
-// Solid y-axis baseline
-scatterSvg.append("line")
-  .attr("x1", scatterMargin.left)
-  .attr("x2", scatterMargin.left)
-  .attr("y1", scatterMargin.top)
-  .attr("y2", scatterHeight - scatterMargin.bottom)
-  .attr("stroke", "#000")
-  .attr("stroke-width", 1.4);
-
-scatterSvg.append("g")
-  .attr("transform", `translate(0, ${scatterHeight - scatterMargin.bottom})`)
-  .call(d3.axisBottom(scatterX).ticks(5, "~s"))
-  .selectAll("text")
-  .style("fill", "#000");
-
-scatterSvg.append("text")
-  .attr("x", scatterWidth / 2)
-  .attr("y", scatterHeight - 10)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-weight", "600")
-  .text("Call volume (2024)");
-
-scatterSvg.append("g")
-  .attr("transform", `translate(${scatterMargin.left},0)`)
-  .call(d3.axisLeft(scatterY))
-  .selectAll("text")
-  .style("fill", "#000");
-
-scatterSvg.append("text")
-  .attr("x", -scatterHeight / 2)
-  .attr("y", 20)
-  .attr("transform", "rotate(-90)")
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-weight", "600")
-  .text("Median call duration (minutes)");
-
-// Plot each borough as a labeled dot
-const nodes = scatterSvg.append("g")
-  .selectAll("g.node")
-  .data(scatterData)
-  .join("g")
-  .attr("transform", d => `translate(${scatterX(d.call_count)}, ${scatterY(d.median_call_duration)})`);
-
-nodes.append("circle")
-  .attr("r", d => scatterR(d.median_arrival_delay))
-  .attr("fill", d => scatterFocus === "All Categories" ? scatterColor(d.category) : d.category === "Confirmed Crime" ? "#0f6cbd" : "#d1495b")
-  .attr("opacity", d => selectedBorough && d.boro_nm !== selectedBorough ? 0.3 : 0.95)
-  .attr("stroke", d => d.boro_nm === selectedBorough ? "#000" : "#5d768d")
-  .attr("stroke-width", d => d.boro_nm === selectedBorough ? 2 : 1)
-  .append("title")
-  .text(d => `${d.boro_nm} · ${d.category}
-${d.call_count.toLocaleString()} calls
-Median duration: ${d.median_call_duration} min
-Median arrival delay: ${d.median_arrival_delay} min`);
-
-nodes.append("text")
-  .text(d => d.boro_nm)
-  .attr("dx", d => {
-    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return 10;
-    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return -15;
-    return 0;
-  })
-  .attr("dy", d => {
-    const base = -scatterR(d.median_arrival_delay) - 6;
-    if (d.boro_nm === "Staten Island" && d.category === "Confirmed Crime") return base - 2;
-    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return base + 2;
-    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return base + 16;
-    return base;
-  })
-  .attr("text-anchor", d => {
-    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return "start";
-    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return "end";
-    return "middle";
-  })
-  .attr("fill", "#000")
-  .style("font-size", "11px")
-  .style("font-weight", "600");
-
-const legend = scatterSvg.append("g")
-  .attr("transform", `translate(${scatterWidth - scatterMargin.right / 5}, ${scatterMargin.top})`);
-
-if (scatterFocus === "All Categories") {
-  callCategories.forEach((cat, i) => {
-    const g = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
-    g.append("rect")
-      .attr("width", 14)
-      .attr("height", 14)
-      .attr("fill", scatterColor(cat));
-    g.append("text")
-      .attr("x", -10)
-      .attr("y", 11)
-      .attr("text-anchor", "end")
-      .attr("fill", "#000")
-      .style("font-size", "12px")
-      .text(cat);
-  });
-}
-
-const sizeLegend = legend.append("g")
-  .attr("transform", `translate(0, ${scatterFocus === "All Categories" ? callCategories.length * 20 + 20 : 12})`);
-
-const legendSizes = [arrivalExtent[0], d3.median(arrivalExtent), arrivalExtent[1]].map(d => Math.max(1, d));
-legendSizes.forEach((val, i) => {
-  const y = i * 34;
-  sizeLegend.append("circle")
-    .attr("cx", 0)
-    .attr("cy", y)
-    .attr("r", scatterR(val))
-    .attr("fill", "#0f6cbd")
-    .attr("opacity", 0.25)
-    .attr("stroke", "#0f6cbd");
-  sizeLegend.append("text")
-    .attr("x", -scatterR(val) - 10)
-    .attr("y", y + 4)
-    .attr("text-anchor", "end")
-    .attr("fill", "#000")
-    .style("font-size", "12px")
-    .text(`${d3.format(".1f")(val)} min arrival delay`);
-});
-
-display(scatterSvg.node());
-```
-
-</details>
-
 ### Analysis & Insights
 
 <ol class="insight-list">
@@ -480,88 +292,127 @@ const path = d3.geoPath(projection);
 const maxCalls = d3.max(boroughCounts, d => d.call_count);
 const mapColor = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, maxCalls]);
 
-// Render confirmed and potential choropleths side-by-side (or single if selected)
-const grid = d3.create("div")
-  .style("display", "grid")
-  .style("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
-  .style("gap", "1.5rem");
+const grid = d3.create('div')
+  .style('display', 'grid')
+  .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
+  .style('gap', '1.5rem');
 
 const selectedMaps = callCategories;
 
 for (const category of selectedMaps) {
-  const data = new Map(boroughCounts.filter(d => d.category === category).map(d => [d.boro_nm, d.call_count]));
-  const svg = grid.append("svg")
-    .attr("viewBox", [0, 0, mapWidth, mapHeight])
-    .attr("width", mapWidth)
-    .attr("height", mapHeight)
-    .style("max-width", "100%")
-    .style("height", "auto")
-    .style("background", "#dfdfd6");
+  const catRows = boroughCounts.filter(d => d.category === category);
+  const data = new Map(catRows.map(d => [d.boro_nm, d.call_count]));
+  const totalCalls = d3.sum(catRows, d => d.call_count);
 
-  svg.append("text")
-    .attr("x", mapWidth / 2)
-    .attr("y", 28)
-    .attr("text-anchor", "middle")
-    .attr("fill", "#000")
-    .style("font-size", "18px")
-    .style("font-weight", "600")
+  const svg = grid.append('svg')
+    .attr('viewBox', [0, 0, mapWidth, mapHeight])
+    .attr('width', mapWidth)
+    .attr('height', mapHeight)
+    .style('max-width', '100%')
+    .style('height', 'auto')
+    .style('background', '#dfdfd6');
+
+  svg.append('text')
+    .attr('x', mapWidth / 2)
+    .attr('y', 28)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#000')
+    .style('font-size', '18px')
+    .style('font-weight', '600')
     .text(category);
 
-  svg.append("g")
-    .attr("transform", "translate(0, 40)")
-    .selectAll("path")
+  const mapGroup = svg.append('g').attr('transform', 'translate(0, 40)');
+
+  mapGroup.selectAll('path')
     .data(boroughBoundaries.features)
-    .join("path")
-    .attr("d", path)
-    .attr("fill", d => mapColor(data.get(d.properties.BoroName) || 0))
-    .attr("stroke", "#ffffff")
-    .attr("stroke-width", 1.2)
-    .append("title")
+    .join('path')
+    .attr('d', path)
+    .attr('fill', d => mapColor(data.get(d.properties.BoroName) || 0))
+    .attr('stroke', '#2f2f2f')
+    .attr('stroke-width', 1.2)
+    .append('title')
     .text(d => `${d.properties.BoroName}
 ${(data.get(d.properties.BoroName) || 0).toLocaleString()} calls`);
+
+  // Borough labels and percent within each outline
+  mapGroup.append('g')
+    .selectAll('g')
+    .data(boroughBoundaries.features)
+    .join('g')
+    .attr('transform', d => {
+      const [x, y] = path.centroid(d);
+      return d.properties.BoroName === 'Manhattan'
+        ? `translate(${x - 10}, ${y + 6}) rotate(-70)`
+        : d.properties.BoroName === 'Brooklyn'
+        ? `translate(${x}, ${y - 10})`
+        : d.properties.BoroName === 'Staten Island'
+        ? `translate(${x + 8}, ${y})`
+        : d.properties.BoroName === 'Queens'
+        ? `translate(${x + 6}, ${y - 6})`
+        : `translate(${x}, ${y})`;
+    })
+    .call(g => {
+      g.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#111')
+        .style('font-size', '11px')
+        .style('font-weight', '700')
+        .text(d => d.properties.BoroName);
+      g.append('text')
+        .attr('dy', 14)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#111')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .text(d => {
+          const calls = data.get(d.properties.BoroName) || 0;
+          const pct = totalCalls ? (calls / totalCalls) * 100 : 0;
+          return `${pct.toFixed(1)}%`;
+        });
+    });
 }
 
 const legendWidth = 260;
 const legendHeight = 14;
 const legendScale = d3.scaleLinear().domain(mapColor.domain()).range([0, legendWidth]);
-const defs = grid.append("svg")
-  .attr("viewBox", [0, 0, legendWidth + 80, 60])
-  .style("max-width", "100%")
-  .style("height", "auto");
+const defs = grid.append('svg')
+  .attr('viewBox', [0, 0, legendWidth + 80, 60])
+  .style('max-width', '100%')
+  .style('height', 'auto');
 
-const gradientId = "mapGradient";
-const gradient = defs.append("defs").append("linearGradient")
-  .attr("id", gradientId)
-  .attr("x1", "0%").attr("x2", "100%")
-  .attr("y1", "0%").attr("y2", "0%");
+const gradientId = 'mapGradient';
+const gradient = defs.append('defs').append('linearGradient')
+  .attr('id', gradientId)
+  .attr('x1', '0%').attr('x2', '100%')
+  .attr('y1', '0%').attr('y2', '0%');
 
 for (let i = 0; i <= 10; i++) {
   const t = i / 10;
-  gradient.append("stop")
-    .attr("offset", `${t * 100}%`)
-    .attr("stop-color", mapColor(legendScale.invert(t * legendWidth)));
+  gradient.append('stop')
+    .attr('offset', `${t * 100}%`)
+    .attr('stop-color', mapColor(legendScale.invert(t * legendWidth)));
 }
 
-defs.append("rect")
-  .attr("x", 20)
-  .attr("y", 10)
-  .attr("width", legendWidth)
-  .attr("height", legendHeight)
-  .attr("fill", `url(#${gradientId})`)
-  .attr("stroke", "#333");
+defs.append('rect')
+  .attr('x', 20)
+  .attr('y', 10)
+  .attr('width', legendWidth)
+  .attr('height', legendHeight)
+  .attr('fill', `url(#${gradientId})`)
+  .attr('stroke', '#333');
 
-defs.append("g")
-  .attr("transform", `translate(20, ${10 + legendHeight})`)
-  .call(d3.axisBottom(legendScale).ticks(5, "~s"))
-  .selectAll("text")
-  .style("fill", "#fff");
+defs.append('g')
+  .attr('transform', `translate(20, ${10 + legendHeight})`)
+  .call(d3.axisBottom(legendScale).ticks(5, '~s'))
+  .selectAll('text')
+  .style('fill', '#fff');
 
-defs.append("text")
-  .attr("x", 20)
-  .attr("y", 56.5)
-  .attr("fill", "#fff")
-  .style("font-size", "12px")
-  .text("Call volume per borough");
+defs.append('text')
+  .attr('x', 20)
+  .attr('y', 56.5)
+  .attr('fill', '#fff')
+  .style('font-size', '12px')
+  .text('Call volume per borough');
 
 display(grid.node());
 ```
@@ -577,43 +428,43 @@ const path = d3.geoPath(projection);
 const maxCalls = d3.max(boroughCounts, d => d.call_count);
 const mapColor = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, maxCalls]);
 
-// Render confirmed and potential choropleths side-by-side (or single if selected)
-const grid = d3.create("div")
-  .style("display", "grid")
-  .style("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
-  .style("gap", "1.5rem");
+const grid = d3.create('div')
+  .style('display', 'grid')
+  .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
+  .style('gap', '1.5rem');
 
 const selectedMaps = callCategories;
 
 for (const category of selectedMaps) {
   const data = new Map(boroughCounts.filter(d => d.category === category).map(d => [d.boro_nm, d.call_count]));
-  const svg = grid.append("svg")
-    .attr("viewBox", [0, 0, mapWidth, mapHeight])
-    .attr("width", mapWidth)
-    .attr("height", mapHeight)
-    .style("max-width", "100%")
-    .style("height", "auto")
-    .style("background", "#dfdfd6");
 
-  svg.append("text")
-    .attr("x", mapWidth / 2)
-    .attr("y", 28)
-    .attr("text-anchor", "middle")
-    .attr("fill", "#000")
-    .style("font-size", "18px")
-    .style("font-weight", "600")
+  const svg = grid.append('svg')
+    .attr('viewBox', [0, 0, mapWidth, mapHeight])
+    .attr('width', mapWidth)
+    .attr('height', mapHeight)
+    .style('max-width', '100%')
+    .style('height', 'auto')
+    .style('background', '#dfdfd6');
+
+  svg.append('text')
+    .attr('x', mapWidth / 2)
+    .attr('y', 28)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#000')
+    .style('font-size', '18px')
+    .style('font-weight', '600')
     .text(category);
 
-  svg.append("g")
-    .attr("transform", "translate(0, 40)")
-    .selectAll("path")
+  svg.append('g')
+    .attr('transform', 'translate(0, 40)')
+    .selectAll('path')
     .data(boroughBoundaries.features)
-    .join("path")
-    .attr("d", path)
-    .attr("fill", d => mapColor(data.get(d.properties.BoroName) || 0))
-    .attr("stroke", "#ffffff")
-    .attr("stroke-width", 1.2)
-    .append("title")
+    .join('path')
+    .attr('d', path)
+    .attr('fill', d => mapColor(data.get(d.properties.BoroName) || 0))
+    .attr('stroke', '#2f2f2f')
+    .attr('stroke-width', 1.2)
+    .append('title')
     .text(d => `${d.properties.BoroName}
 ${(data.get(d.properties.BoroName) || 0).toLocaleString()} calls`);
 }
@@ -621,44 +472,44 @@ ${(data.get(d.properties.BoroName) || 0).toLocaleString()} calls`);
 const legendWidth = 260;
 const legendHeight = 14;
 const legendScale = d3.scaleLinear().domain(mapColor.domain()).range([0, legendWidth]);
-const defs = grid.append("svg")
-  .attr("viewBox", [0, 0, legendWidth + 80, 60])
-  .style("max-width", "100%")
-  .style("height", "auto");
+const defs = grid.append('svg')
+  .attr('viewBox', [0, 0, legendWidth + 80, 60])
+  .style('max-width', '100%')
+  .style('height', 'auto');
 
-const gradientId = "mapGradient";
-const gradient = defs.append("defs").append("linearGradient")
-  .attr("id", gradientId)
-  .attr("x1", "0%").attr("x2", "100%")
-  .attr("y1", "0%").attr("y2", "0%");
+const gradientId = 'mapGradient';
+const gradient = defs.append('defs').append('linearGradient')
+  .attr('id', gradientId)
+  .attr('x1', '0%').attr('x2', '100%')
+  .attr('y1', '0%').attr('y2', '0%');
 
 for (let i = 0; i <= 10; i++) {
   const t = i / 10;
-  gradient.append("stop")
-    .attr("offset", `${t * 100}%`)
-    .attr("stop-color", mapColor(legendScale.invert(t * legendWidth)));
+  gradient.append('stop')
+    .attr('offset', `${t * 100}%`)
+    .attr('stop-color', mapColor(legendScale.invert(t * legendWidth)));
 }
 
-defs.append("rect")
-  .attr("x", 20)
-  .attr("y", 10)
-  .attr("width", legendWidth)
-  .attr("height", legendHeight)
-  .attr("fill", `url(#${gradientId})`)
-  .attr("stroke", "#333");
+defs.append('rect')
+  .attr('x', 20)
+  .attr('y', 10)
+  .attr('width', legendWidth)
+  .attr('height', legendHeight)
+  .attr('fill', `url(#${gradientId})`)
+  .attr('stroke', '#333');
 
-defs.append("g")
-  .attr("transform", `translate(20, ${10 + legendHeight})`)
-  .call(d3.axisBottom(legendScale).ticks(5, "~s"))
-  .selectAll("text")
-  .style("fill", "#fff");
+defs.append('g')
+  .attr('transform', `translate(20, ${10 + legendHeight})`)
+  .call(d3.axisBottom(legendScale).ticks(5, '~s'))
+  .selectAll('text')
+  .style('fill', '#fff');
 
-defs.append("text")
-  .attr("x", 20)
-  .attr("y", 56.5)
-  .attr("fill", "#fff")
-  .style("font-size", "12px")
-  .text("Call volume per borough");
+defs.append('text')
+  .attr('x', 20)
+  .attr('y', 56.5)
+  .attr('fill', '#fff')
+  .style('font-size', '12px')
+  .text('Call volume per borough');
 
 display(grid.node());
 ```
@@ -701,250 +552,7 @@ display(grid.node());
 </ol>
 
 
-## Where is the 911 call mix shifting?
-
-### Potential minus confirmed call share (%)
-
-- This map compares each borough’s share of all potential-crime calls to its share of all confirmed-crime calls in NYC
-- The value is computed as:<br>
-  `mix_shift = (potential_calls_borough / potential_calls_city) - (confirmed_calls_borough / confirmed_calls_city)`
-
-- Positive values (red) mean the borough contributes more potential-crime calls relative to confirmed
-- Negative values (blue) mean the borough contributes more confirmed-crime calls relative to potential
-
-```js
-// Compute share differences between potential and confirmed loads
-// Positive values indicate places leaning toward potential calls
-const shareMatrix = d3.rollup(
-  boroughCounts,
-  ([d]) => d.share,
-  d => d.category,
-  d => d.boro_nm
-);
-const confirmedShares = shareMatrix.get("Confirmed Crime") || new Map();
-const potentialShares = shareMatrix.get("Potential Crime") || new Map();
-const shareDiff = new Map(
-  boroughNames.map(name => [name, (potentialShares.get(name) || 0) - (confirmedShares.get(name) || 0)])
-);
-const diffExtent = d3.max([...shareDiff.values()].map(Math.abs));
-const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([diffExtent, 0, -diffExtent]);
-
-const diffWidth = 700;
-const diffHeight = 520;
-const diffSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, diffWidth, diffHeight])
-  .attr("width", diffWidth)
-  .attr("height", diffHeight)
-  .style("max-width", "100%")
-  .style("height", "auto")
-  .style("background", "#dfdfd6");
-
-diffSvg.append("text")
-  .attr("x", diffWidth / 2)
-  .attr("y", 32)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-weight", "600")
-  .text("Potential minus confirmed call share");
-
-const diffGroup = diffSvg.append("g")
-  .attr("transform", "translate(55, 31)")
-  .selectAll("path")
-  .data(boroughBoundaries.features)
-  .join("path")
-  .attr("d", path)
-  .attr("fill", d => diffColor(shareDiff.get(d.properties.BoroName) || 0))
-  .attr("stroke", "#fff")
-  .attr("stroke-width", 1.2)
-  .append("title")
-  .text(d => {
-    const diff = shareDiff.get(d.properties.BoroName) || 0;
-    const pct = d3.format("+.1%") (diff);
-    return `${d.properties.BoroName}
-Potential share change: ${pct}`;
-  });
-
-const diffLegendHeight = 180;
-const diffScale = d3.scaleLinear().domain([-diffExtent, diffExtent]).range([diffLegendHeight, 0]);
-const diffGradient = diffSvg.append("defs").append("linearGradient")
-  .attr("id", "diffGradient")
-  .attr("x1", "0%").attr("x2", "0%")
-  .attr("y1", "100%").attr("y2", "0%");
-
-for (let i = 0; i <= 10; i++) {
-  const t = i / 10;
-  const value = diffScale.invert(diffLegendHeight * (1 - t));
-  diffGradient.append("stop")
-    .attr("offset", `${t * 100}%`)
-    .attr("stop-color", diffColor(value));
-}
-
-const legendGroup = diffSvg.append("g")
-  .attr("transform", `translate(${diffWidth - 80}, ${80})`);
-
-legendGroup.append("rect")
-  .attr("width", 18)
-  .attr("height", diffLegendHeight)
-  .attr("fill", "url(#diffGradient)")
-  .attr("stroke", "#333");
-
-// Axis labels to show exact percentage shifts
-legendGroup.append("g")
-  .attr("transform", "translate(18, 0)")
-  .call(d3.axisRight(diffScale).ticks(5, "+.0%"))
-  .selectAll("text")
-  .style("fill", "#000");
-
-legendGroup.append("text")
-  .attr("x", 9)
-  .attr("y", -12)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-size", "12px")
-  .text("Potential heavy");
-
-legendGroup.append("text")
-  .attr("x", 9)
-  .attr("y", diffLegendHeight + 16)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-size", "12px")
-  .text("Confirmed heavy");
-
-display(diffSvg.node());
-```
-
-<details>
-<summary>Code</summary>
-
-```javascript
-// Compute share differences between potential and confirmed loads
-// Positive values indicate places leaning toward potential calls
-const shareMatrix = d3.rollup(
-  boroughCounts,
-  ([d]) => d.share,
-  d => d.category,
-  d => d.boro_nm
-);
-const confirmedShares = shareMatrix.get("Confirmed Crime") || new Map();
-const potentialShares = shareMatrix.get("Potential Crime") || new Map();
-const shareDiff = new Map(
-  boroughNames.map(name => [name, (potentialShares.get(name) || 0) - (confirmedShares.get(name) || 0)])
-);
-const diffExtent = d3.max([...shareDiff.values()].map(Math.abs));
-const diffColor = d3.scaleDiverging(d3.interpolateRdBu).domain([diffExtent, 0, -diffExtent]);
-
-const diffWidth = 700;
-const diffHeight = 520;
-const diffSvg = d3.create("svg")
-  .attr("viewBox", [0, 0, diffWidth, diffHeight])
-  .attr("width", diffWidth)
-  .attr("height", diffHeight)
-  .style("max-width", "100%")
-  .style("height", "auto")
-  .style("background", "#dfdfd6");
-
-diffSvg.append("text")
-  .attr("x", diffWidth / 2)
-  .attr("y", 32)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-weight", "600")
-  .text("Potential minus confirmed call share");
-
-const diffGroup = diffSvg.append("g")
-  .attr("transform", "translate(55, 31)")
-  .selectAll("path")
-  .data(boroughBoundaries.features)
-  .join("path")
-  .attr("d", path)
-  .attr("fill", d => diffColor(shareDiff.get(d.properties.BoroName) || 0))
-  .attr("stroke", "#fff")
-  .attr("stroke-width", 1.2)
-  .append("title")
-  .text(d => {
-    const diff = shareDiff.get(d.properties.BoroName) || 0;
-    const pct = d3.format("+.1%")(diff);
-    return `${d.properties.BoroName}
-Potential share change: ${pct}`;
-  });
-
-const diffLegendHeight = 180;
-const diffScale = d3.scaleLinear().domain([-diffExtent, diffExtent]).range([diffLegendHeight, 0]);
-const diffGradient = diffSvg.append("defs").append("linearGradient")
-  .attr("id", "diffGradient")
-  .attr("x1", "0%").attr("x2", "0%")
-  .attr("y1", "100%").attr("y2", "0%");
-
-for (let i = 0; i <= 10; i++) {
-  const t = i / 10;
-  const value = diffScale.invert(diffLegendHeight * (1 - t));
-  diffGradient.append("stop")
-    .attr("offset", `${t * 100}%`)
-    .attr("stop-color", diffColor(value));
-}
-
-const legendGroup = diffSvg.append("g")
-  .attr("transform", `translate(${diffWidth - 80}, ${80})`);
-
-legendGroup.append("rect")
-  .attr("width", 18)
-  .attr("height", diffLegendHeight)
-  .attr("fill", "url(#diffGradient)")
-  .attr("stroke", "#333");
-
-legendGroup.append("g")
-  .attr("transform", "translate(18, 0)")
-  .call(d3.axisRight(diffScale).ticks(5, "+.0%"))
-  .selectAll("text")
-  .style("fill", "#000");
-
-legendGroup.append("text")
-  .attr("x", 9)
-  .attr("y", -12)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-size", "12px")
-  .text("Potential heavy");
-
-legendGroup.append("text")
-  .attr("x", 9)
-  .attr("y", diffLegendHeight + 16)
-  .attr("text-anchor", "middle")
-  .attr("fill", "#000")
-  .style("font-size", "12px")
-  .text("Confirmed heavy");
-
-display(diffSvg.node());
-```
-
-</details>
-
-### Analysis & Insights
-
-<ol class="insight-list">
-  <li>Brooklyn is the deepest red region, which means its share of potential-crime calls is much higher than its share of confirmed-crime calls
-    <div class="insight">
-      <strong>Insight 💡</strong><br>
-      Brooklyn carries a disproportionately large share of the city’s potential-crime workload. This suggests that ambiguous or low-information incidents play an outsized role in Brooklyn’s 911 volume
-    </div>
-  </li>
-  <li>Staten Island and Queens also lean red, but less intensely
-    <div class="insight">
-      <strong>Insight 💡</strong><br>
-      While the shift isn’t large, it still indicates a slightly higher proportion of uncertain or exploratory calls compared to confirmed incidents
-    </div>
-  </li>
-  <li>The Bronx and Manhattan appear in blue, which means their share of confirmed-crime calls is higher relative to their share of potential-crime calls
-    <div class="insight">
-      <strong>Insight 💡</strong><br>
-      Even though both boroughs have more potential calls than confirmed in absolute terms, they contribute proportionally more confirmed incidents to the city total. This suggests a call mix that is more skewed toward verifiable, actionable events
-    </div>
-  </li>
-</ol>
-
-
-## Where are the precinct-level hotspots of call volume?
+## How does 911 call volume vary within boroughs?
 
 ### Precinct-level 911 Hotspots
 
@@ -962,7 +570,7 @@ const precinctMapCategory = view(Inputs.radio(["All Categories", ...callCategori
 const precinctGeo = await FileAttachment("NYPD_Precincts.geojson").json();
 
 const precinctMapWidth = 900;
-const precinctMapHeight = 700;
+const precinctMapHeight = 760;
 const precinctPadding = 30;
 const precinctMapColor = d3.scaleSequential(d3.interpolateYlOrRd);
 
@@ -973,14 +581,15 @@ const precinctProjection = d3.geoMercator()
   );
 const precinctPath = d3.geoPath(precinctProjection);
 
+// Volume by precinct (numeric)
 const mapData = new Map(
   precinctCounts
     .filter(d => precinctMapCategory === "All Categories" || d.category === precinctMapCategory)
-    .map(d => [d.nypd_pct_cd, d.call_count])
+    .map(d => [+d.nypd_pct_cd, +d.call_count])
 );
 
 const maxPrecCalls = d3.max(mapData.values());
-precinctMapColor.domain([0, maxPrecCalls]);
+precinctMapColor.domain([0, maxPrecCalls || 1]);
 
 const precinctSvg = d3.create("svg")
   .attr("viewBox", [0, 0, precinctMapWidth, precinctMapHeight])
@@ -995,15 +604,25 @@ precinctSvg.append("g")
   .data(precinctGeo.features)
   .join("path")
   .attr("d", precinctPath)
-  .attr("fill", d => precinctMapColor(mapData.get(d.properties.Precinct) || 0))
+  .attr("fill", d => precinctMapColor(mapData.get(+d.properties.Precinct) || 0))
   .attr("stroke", "#fff")
   .attr("stroke-width", 1.2)
   .append("title")
   .text(d => {
-    const pct = d.properties.Precinct;
+    const pct = +d.properties.Precinct;
     const calls = mapData.get(pct) || 0;
     return `Precinct ${pct}\n${calls.toLocaleString()} calls`;
   });
+
+// Borough separation stroke (background color gap)
+precinctSvg.append("g")
+  .selectAll("path")
+  .data(boroughBoundaries.features)
+  .join("path")
+  .attr("d", precinctPath)
+  .attr("fill", "none")
+  .attr("stroke", "#dfdfd6")
+  .attr("stroke-width", 6);
 
 // Borough outlines for context
 precinctSvg.append("g")
@@ -1058,7 +677,7 @@ legend.append("text")
   .attr("y", -6)
   .attr("fill", "#000")
   .style("font-size", "12px")
-  .text("Call volume per precinct");
+  .text("Call volume");
 
 precinctSvg.append("text")
   .attr("x", legMargin.left)
@@ -1067,7 +686,7 @@ precinctSvg.append("text")
   .attr("fill", "#000")
   .style("font-weight", "600")
   .style("font-size", "18px")
-  .text("Precinct call volume (2024)");
+  .text("Precinct call volume");
 
 display(precinctSvg.node());
 ```
@@ -1119,7 +738,7 @@ precinctSvg.append("text")
   .attr("fill", "#000")
   .style("font-weight", "600")
   .style("font-size", "18px")
-  .text("Precinct call volume (2024)");
+  .text("Precinct call volume");
 
 precinctSvg.append("g")
   .selectAll("path")
@@ -1223,7 +842,303 @@ display(precinctSvg.node());
   </li>
 </ol>
 
-## When do borough workloads spike throughout the year?
+## Which precincts defy the volume-delay pattern, and why?
+
+### Precinct call volume with arrival delay
+
+- Precinct fill uses a grayscale ramp (light = fewer calls, dark = more calls)
+- Centroid dots are colored by median arrival delay (green = faster, yellow = moderate, red = slower)
+
+```js
+const bivarCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+```
+
+```js
+const precinctGeo = await FileAttachment("NYPD_Precincts.geojson").json();
+
+// Volume by precinct (numeric, same approach as hotspots)
+const volRows = bivarCategory === "All Categories"
+  ? precinctCounts
+  : precinctCounts.filter(d => d.category === bivarCategory);
+const callByPct = new Map();
+volRows.forEach(d => {
+  const pct = +d.nypd_pct_cd;
+  const count = +d.call_count;
+  callByPct.set(pct, (callByPct.get(pct) || 0) + count);
+});
+
+// Delay by precinct (weighted)
+const delayRows = bivarCategory === "All Categories"
+  ? precinctProfiles
+  : precinctProfiles.filter(d => d.category === bivarCategory);
+const delaySums = new Map();
+const delayCalls = new Map();
+delayRows.forEach(d => {
+  const pct = +d.nypd_pct_cd;
+  const calls = +d.call_count;
+  const delay = +d.median_arrival_delay;
+  delaySums.set(pct, (delaySums.get(pct) || 0) + delay * calls);
+  delayCalls.set(pct, (delayCalls.get(pct) || 0) + calls);
+});
+const delayByPct = new Map(
+  Array.from(delaySums, ([pct, sum]) => {
+    const calls = delayCalls.get(pct) || 0;
+    return [pct, calls ? sum / calls : NaN];
+  })
+);
+
+const bivarWidth = 900;
+const bivarHeight = 760;
+const bivarPadding = 30;
+const bivarProjection = d3.geoMercator()
+  .fitExtent(
+    [[bivarPadding, bivarPadding + 20], [bivarWidth - bivarPadding, bivarHeight - bivarPadding]],
+    precinctGeo
+  );
+const bivarPath = d3.geoPath(bivarProjection);
+
+const callExtent = d3.extent(callByPct.values());
+const volColor = d3.scaleLinear()
+  .domain([0, callExtent[1] || 1])
+  .range(["#f2f2f2", "#2f2f2f"]);
+
+const delayVals = Array.from(delayByPct.values()).filter(Number.isFinite);
+const delayBreaks = delayVals.length ? [d3.quantile(delayVals, 0.33), d3.quantile(delayVals, 0.66)] : [5, 10];
+const delayColor = d => {
+  if (!Number.isFinite(d)) return "#777";
+  if (d <= delayBreaks[0]) return "#3cb371";   // green = faster
+  if (d <= delayBreaks[1]) return "#f6c343";   // yellow = moderate
+  return "#d84a4a";                            // red = slower
+};
+
+// Helper to keep label/dot points inside polygons (handles concave shapes)
+function interiorPoint(feature) {
+  // Flatten rings
+  const rings = feature.geometry.type === "Polygon"
+    ? feature.geometry.coordinates
+    : feature.geometry.coordinates.flat();
+
+  // Pick largest ring by projected area
+  let best = null;
+  rings.forEach(ring => {
+    const projected = ring.map(pt => bivarProjection(pt));
+    const area = Math.abs(d3.polygonArea(projected));
+    if (!best || area > best.area) best = {projected, area};
+  });
+  if (!best) return bivarPath.centroid(feature);
+
+  let p = d3.polygonCentroid(best.projected);
+  if (d3.polygonContains(best.projected, p)) return p;
+
+  // Fallback: move halfway toward ring centroid until inside
+  const center = d3.polygonCentroid(best.projected);
+  let iter = 0;
+  while (!d3.polygonContains(best.projected, p) && iter < 5) {
+    p = [(p[0] + center[0]) / 2, (p[1] + center[1]) / 2];
+    iter++;
+  }
+  return p;
+}
+
+const bivarLabel = typeof bivarCategory === "string" ? bivarCategory : "All Categories";
+
+const bivarSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, bivarWidth, bivarHeight])
+  .attr("width", bivarWidth)
+  .attr("height", bivarHeight)
+  .style("max-width", "100%")
+  .style("height", "auto")
+  .style("background", "#dfdfd6");
+
+bivarSvg.append("text")
+  .attr("x", bivarWidth / 2)
+  .attr("y", 34)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .style("font-size", "18px")
+  .text("Precinct call volume + arrival delay");
+
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", d => volColor(callByPct.get(+d.properties.Precinct) || 0))
+  .attr("stroke", "#b3b3b3")
+  .attr("stroke-width", 0.9)
+  .append("title")
+  .text(d => {
+    const pct = +d.properties.Precinct;
+    const calls = callByPct.get(pct) || 0;
+    const delay = delayByPct.get(pct);
+    return `Precinct ${pct}
+${calls.toLocaleString()} calls
+Median arrival delay: ${Number.isFinite(delay) ? d3.format(".1f")(delay) : "n/a"} min`;
+  });
+
+// Precinct borders overlay for clarity
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", "none")
+  .attr("stroke", "#4a4a4a")
+  .attr("stroke-width", 1.1);
+
+// Delay dots at precinct centroids
+bivarSvg.append("g")
+  .selectAll("circle")
+  .data(precinctGeo.features)
+  .join("circle")
+  .attr("cx", d => interiorPoint(d)[0])
+  .attr("cy", d => interiorPoint(d)[1])
+  .attr("r", 5.5)
+  .attr("fill", d => delayColor(delayByPct.get(+d.properties.Precinct)))
+  .attr("stroke", "#000")
+  .attr("stroke-width", 0.6)
+  .attr("opacity", 0.9)
+  .append("title")
+  .text(d => {
+    const pct = +d.properties.Precinct;
+    const calls = callByPct.get(pct) || 0;
+    const delay = delayByPct.get(pct);
+    return `Precinct ${pct}
+${calls.toLocaleString()} calls
+Median arrival delay: ${Number.isFinite(delay) ? d3.format(".1f")(delay) : "n/a"} min`;
+  });
+
+// Borough outlines for context
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(boroughBoundaries.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", "none")
+  .attr("stroke", "#333")
+  .attr("stroke-width", 1.2);
+
+// Volume legend (grayscale fill)
+const volWidth = 240;
+const volHeight = 12;
+const volMargin = {left: 40, top: 70};
+const volScale = d3.scaleLinear().domain(volColor.domain()).range([0, volWidth]);
+const volDefs = bivarSvg.append("defs");
+const volGradId = "bivarPrecinctVolGrad";
+const volGrad = volDefs.append("linearGradient")
+  .attr("id", volGradId)
+  .attr("x1", "0%").attr("x2", "100%")
+  .attr("y1", "0%").attr("y2", "0%");
+for (let i = 0; i <= 10; i++) {
+  const t = i / 10;
+  volGrad.append("stop")
+    .attr("offset", `${t * 100}%`)
+    .attr("stop-color", volColor(volScale.invert(t * volWidth)));
+}
+
+const volLegend = bivarSvg.append("g")
+  .attr("transform", `translate(${volMargin.left}, ${volMargin.top})`);
+
+volLegend.append("rect")
+  .attr("width", volWidth)
+  .attr("height", volHeight)
+  .attr("fill", `url(#${volGradId})`)
+  .attr("stroke", "#333");
+
+volLegend.append("g")
+  .attr("transform", `translate(0, ${volHeight})`)
+  .call(d3.axisBottom(volScale).ticks(5, "~s"))
+  .selectAll("text")
+  .style("fill", "#000");
+
+volLegend.append("text")
+  .attr("x", 0)
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Call volume");
+
+// Delay legend (dot colors)
+const delayLegend = bivarSvg.append("g")
+  .attr("transform", `translate(${volMargin.left}, ${volMargin.top + 72})`);
+
+[
+  {label: `Fast (≤ ${d3.format(".1f")(delayBreaks[0])} min)`, color: "#3cb371"},
+  {label: `Moderate (${d3.format(".1f")(delayBreaks[0])}–${d3.format(".1f")(delayBreaks[1])} min)`, color: "#f6c343"},
+  {label: `Slow (> ${d3.format(".1f")(delayBreaks[1])} min)`, color: "#d84a4a"}
+].forEach((d, i) => {
+  const g = delayLegend.append("g").attr("transform", `translate(0, ${6 + i * 18})`);
+  g.append("circle")
+    .attr("r", 6)
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("fill", d.color)
+    .attr("stroke", "#000")
+    .attr("stroke-width", 0.6);
+  g.append("text")
+    .attr("x", 12)
+    .attr("y", 4)
+    .attr("fill", "#000")
+    .style("font-size", "12px")
+    .text(d.label);
+});
+
+delayLegend.append("text")
+  .attr("x", 0)
+  .attr("y", -10)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Median arrival delay");
+
+display(bivarSvg.node());
+```
+
+### Analysis & Insights
+
+<ol class="insight-list">
+  <li>Bronx Precinct 44 (Yankee Stadium area) is green even though it has one of the highest call volumes citywide
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Concentrated staffing in this high-crime hotspot has offset workload and kept travel times low. This makes Precinct 44 a useful model for other high-demand precincts that are still struggling with delays
+    </div>
+  </li>
+  <li>The southernmost Brooklyn precinct (61) stands out with a green delay despite being surrounded by red
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      This precinct benefits from unusually good road access that connects the area directly to the rest of the city. Its largely residential, mid-rise street grid keeps emergency travel paths short and predictable. Neighboring slow precincts might improve response by tuning deployment/routing to mirror precinct 61
+    </div>
+  </li>
+  <li>High-volume Manhattan corridor shows mostly green/yellow delays despite having high call volumes
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Dense, grid-like street layouts and high unit availability allow Manhattan to absorb extreme demand with minimal delay. Many outer-borough precincts perform worse with far fewer calls, underscoring the role of urban form and deployment density in shaping arrival times
+    </div>
+  </li>
+  <li>Southern Brooklyn (Coney Island, Midwood, Flatbush belts) clusters in red delays even though many precincts are only mid-volume
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      This indicates a chronic dispatch congestion zone. These precincts operate under sustained pressure: dense populations, heavy street traffic, and slower routing options
+    </div>
+  </li>
+  <li>Precinct 71 (Brooklyn) shows red delays even though its call volume is lower than surrounding precincts
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Possible contributors include dense mixed-use housing, high pedestrian activity around Eastern Parkway/Flatbush corridors, and frequent serious incidents that tie up units for longer. Improving deployment tactics and cross-precinct support may reduce delays more effectively than simply adding capacity
+    </div>
+  </li>
+  <li>Staten Island shows yellow/red delays despite having some of the lowest call volumes
+    <div class="insight">
+      <strong>Insight 💡</strong><br>
+      Staten Island’s slowdown is structural (long travel distances, fewer units per square mile, and geographic isolation), not volume-driven
+    </div>
+  </li>
+</ol>
+
+## How do borough workloads change throughout the year?
 
 ### Temporal Patterns in 911 Call Volume
 
