@@ -8,7 +8,7 @@ Polished D3 visualization
 Analysis and interpretation
 Insights and implications -->
 
-# Geographic Analysis
+# Serving the five 5 Boroughs: Spatial Analysis of responses
 
 ```js
 // Load spatial files plus the aggregates generated from preprocessing notebooks
