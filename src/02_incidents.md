@@ -71,7 +71,7 @@ const chart = (() => {
 
   // Create the color scale.
   const color = d3.scaleOrdinal(
-    d3.quantize(d3.interpolateSpectral, incidentHierarchy.children.length + 1)
+    d3.quantize(d3.interpolateWarm, incidentHierarchy.children.length + 1)
   );
 
   // Compute the layout.
@@ -100,9 +100,10 @@ const chart = (() => {
   // SVG container.
   const svg = d3.create("svg")
       .attr("viewBox", [-width / 2, -height / 2, width, width])
-      .style("font", "10px sans-serif")
+      .style("font", "12px sans-serif")
+      .style("font-weight",500)
       .style("font-family", "Arial")
-      .style("background","#dfdfd6")
+      .style("background","#bcbcb4ff")
       .style("fill","#000")
       .style("color","#000")
       ;
@@ -113,7 +114,7 @@ const chart = (() => {
     .join("path")
       .attr("fill", d => { while (d.depth > 1) d = d.parent; return color(d.data.name); })
       .attr("fill-opacity", d => arcVisible(d.current) ? (d.children ? 1 : 0.6) : 0)
-      .style("stroke", d => arcVisible(d.current) ? (d.children ? "#000" : "#dfdfd6") : "#dfdfd6")
+      // .style("stroke", d => arcVisible(d.current) ? (d.children ? "#000" : "#dfdfd6") : "#dfdfd6")
       .style("stroke-width",1)
       .attr("pointer-events", d => arcVisible(d.current) ? "auto" : "none")
       .attr("d", d => arc(d.current))
@@ -174,7 +175,7 @@ const chart = (() => {
         return +this.getAttribute("fill-opacity") || arcVisible(d.target);
       })
         .attr("fill-opacity", d => arcVisible(d.target) ? (d.children ? 0.8 : 0.6) : 0)
-        .style("stroke", d => arcVisible(d.target) ? "#000" : "#dfdfd6")
+        // .style("stroke", d => arcVisible(d.target) ? "#000" : "#dfdfd6")
         .attr("pointer-events", d => arcVisible(d.target) ? "auto" : "none")
         .attrTween("d", d => () => arc(d.current));
 
