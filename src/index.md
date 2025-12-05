@@ -132,7 +132,7 @@ flex-direction:column;
     line-height: 1;
     background: linear-gradient(30deg, var(--theme-foreground-focus), currentColor);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    /* -webkit-text-fill-color: transparent; */
     background-clip: text;
   }
 
