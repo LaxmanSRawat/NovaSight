@@ -11,7 +11,7 @@ Insights and implications -->
 # Temporal Analysis
 <br>
 
-## What is the average duration from call initiation to incident closure for the most common incident types? 
+## Which Incident takes the longest time, and which incidents are resolved quickly? 
 
   ```js 
   const focusOptions = ["Crime", "Potential Crime"];
