@@ -9,7 +9,7 @@ Analysis and interpretation
 Insights and implications -->
 
 # Behind Every Call: The Incident Reported
-<br>
+
 
 ## Data Loading
 <details>
@@ -30,7 +30,7 @@ display(all_categories)
 ```
 </details>
 
-<br>
+
 
 To understand what drives New York City’s emergency response system, we first analyzed the types of incidents that generate 911 calls. While the 911 system is often associated with serious, high-risk events, the data reveals a different reality: **the city’s call volume is overwhelmingly shaped by low-severity, high-frequency incidents.**
 
@@ -352,7 +352,7 @@ const chart = (() => {
 ```
 </details>
 
-<br>
+
 
 ### Analysis & Insights
 
@@ -361,7 +361,7 @@ const chart = (() => {
 - **Larceny (~27.0%):** Theft-related calls form the second-largest block, driven by both home thefts and outside thefts (non-transit).
 - **Disorderly (~17.9%):** Disturbance-related behavior—fights, noise complaints and public disorder.
 
-<div class="insight"><strong>Insight 💡</strong><br> NYC’s emergency call system is disproportionately shaped by frequent but relatively non-critical events. The prominence of Other Crimes reflects that 911 is often used for low-level disputes and public-order issues, not clear-cut criminal events. This is similar with Disorderly and Assault categories which represent mild disturbances to physical conflict. Assault, despite being serious, appears far less frequently than “Other Crimes,” underscoring how much 911 traffic is driven by low-intensity social disruptions. This indicates that NYPD might be functioning as a default responder for ambiguous or socially complex situations that may not require armed law enforcement. </div>
+<div class="insight"><strong>Insight 💡</strong> NYC’s emergency call system is disproportionately shaped by frequent but relatively non-critical events. The prominence of Other Crimes reflects that 911 is often used for low-level disputes and public-order issues, not clear-cut criminal events. This is similar with Disorderly and Assault categories which represent mild disturbances to physical conflict. Assault, despite being serious, appears far less frequently than “Other Crimes,” underscoring how much 911 traffic is driven by low-intensity social disruptions. This indicates that NYPD might be functioning as a default responder for ambiguous or socially complex situations that may not require armed law enforcement. </div>
 
 #### **Notable subcategory patterns**
 - **Harassment** is the largest subcategory overall (≈ 21.3% of all incidents) and is the most common in *Other Crimes*.  
@@ -369,8 +369,8 @@ const chart = (() => {
 - **Disorderly incidents** are made up mostly of *Person* (13.0%) and *Group* (5.0%) disturbances.  
 - **Assault** is mostly categorised into 'Other' which further breaks into the most common assault types being Inside and Family Related.
 
-<div class="insight"><strong>Insight 💡</strong><br> A substantial portion of 911 calls relate to ongoing interpersonal tension rather than acute emergencies (Harassment). Disordely incidents are largely composed of Person and Group disturbances which can be suggestive of overall public behavior and street-level tensions. Such calls may benefit more from civilian crisis teams, or social workers than police intervention. </div>
-<br>
+<div class="insight"><strong>Insight 💡</strong> A substantial portion of 911 calls relate to ongoing interpersonal tension rather than acute emergencies (Harassment). Disordely incidents are largely composed of Person and Group disturbances which can be suggestive of overall public behavior and street-level tensions. Such calls may benefit more from civilian crisis teams, or social workers than police intervention. </div>
+
 
 Having understood how incident types are distributed, the next question is: how severe are these incidents? To explore this, we examine the severity levels associated with each main category.
 
@@ -681,7 +681,7 @@ svg.append("g")
 
 ```
 </details>
-<br>
+
 
 ### Analysis & Insights
 #### **Most severe incident categories**
@@ -689,7 +689,7 @@ svg.append("g")
 - Assault
 - Burglary  
 
-<div class="insight"><strong>Insight 💡</strong><br> 1. Disorderly and Other-Crime Incident stand out as the least severe categories (similar to what we inferred earlier).
+<div class="insight"><strong>Insight 💡</strong> 1. Disorderly and Other-Crime Incident stand out as the least severe categories (similar to what we inferred earlier).
 Every incident within these groups is classified as Non-CIP (not in progress), meaning they typically reflect situations that have already ended, minor disturbances, or low-threat public concerns.
 
 2. Assault, Burglary, Larceny, and Robbery contain Critical Incidents, marking them as the primary contributors to high-urgency response workloads. These incidents are imminent or ongoing threats and therefore place the greatest demands on rapid police intervention.
