@@ -103,7 +103,7 @@ const chart = (() => {
       .style("font", "12px sans-serif")
       .style("font-weight",500)
       .style("font-family", "Arial")
-      .style("background","#bcbcb4ff")
+      .style("background","#dfdfd7")
       .style("fill","#000")
       .style("color","#000")
       ;
