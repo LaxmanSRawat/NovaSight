@@ -5,6 +5,14 @@ style: text-style.css
 # Conclusion
 
 ### Based on Incident Analysis
+NYC’s 911 landscape shows a clear imbalance between call volume and severity, with:
+*  low-severity categories (Other Crimes and Disorderly) making up the overwhelming majority of call volume, driven largely by non-urgent, post-incident reports (Non-CIP).
+*  high-severity categories (Assault, Burglary, Robbery) contributing most Critical Incidents, despite occurring far less frequently.
+*  harassment, interpersonal disputes, and public disturbances dominating subcategory patterns, indicating that much of 911 demand reflects social or behavioral tension rather than active emergencies.
+
+#### Recommendation
+Overall, the system is shaped more by frequent, low-intensity public-order issues than by acute threats, revealing an opportunity for alternative or civilian response models to manage non-critical calls while preserving rapid police capacity for high-risk incidents.
+
 
 ### Based on Geographical Analysis
 * ⁠Brooklyn carries the heaviest 911 workload, while Manhattan handles high volume with relatively efficient response performance.
