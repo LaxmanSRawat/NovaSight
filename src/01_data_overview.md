@@ -52,6 +52,30 @@ To extract only incidents related to only criminal (and potential criminal) acti
 
 </br>
 
+## Snapshot & coverage at a glance
+
+```js
+import * as d3 from "npm:d3";
+
+const boroughCounts = await FileAttachment("call_volume_by_borough.csv").csv({typed: true});
+
+const totalByCategory = d3.rollups(
+  boroughCounts,
+  v => d3.sum(v, d => d.call_count),
+  d => d.category
+).map(([Category, Calls]) => ({Category, Calls}));
+
+const totalByBorough = d3.rollups(
+  boroughCounts,
+  v => d3.sum(v, d => d.call_count),
+  d => d.boro_nm
+).map(([Borough, Calls]) => ({Borough, Calls}))
+ .sort((a, b) => d3.descending(a.Calls, b.Calls));
+
+display(Inputs.table(totalByCategory, {label: "Calls by category (2024)"}));
+display(Inputs.table(totalByBorough, {label: "Calls by borough (all categories, 2024)"}));
+```
+
 ## What we kept (scope filters)
 - Time: records where `INCIDENT_DATE` falls in calendar year 2024.
 - Geography: calls with valid borough names and a precinct code (`NYPD_PCT_CD` > 0) for mapping.
@@ -75,6 +99,24 @@ To extract only incidents related to only criminal (and potential criminal) acti
 - Arrival times: some calls have no `ARRIVD_TS`; those records remain in volume counts but are excluded from arrival-delay medians.
 - Location: precinct-level charts rely on `NYPD_PCT_CD` rather than raw coordinates to avoid projection/precision issues.
 - Updates: the source is refreshed quarterly; results reflect the snapshot date noted in the repo.
+
+## Processing flow (at a glance)
+```
+Source (NYC Open Data API CSV)
+    ↓
+Filtering (year=2024, valid borough + precinct, keep crime/potential crime)
+    ↓
+Category mapping (radio codes → curated incident categories)
+    ↓
+Aggregates (borough/precinct volumes, response profiles, time series)
+    ↓
+Visuals (maps, bubbles, time-series charts)
+```
+
+## Refresh / reproduce
+- Download/refresh: run the `download_nyc_data_crime.ipynb` notebook to pull the latest NYC Open Data snapshot.
+- Recompute aggregates: regenerate parquet files and summary CSVs (`call_volume_by_borough.csv`, `call_volume_by_precinct.csv`, response profiles, and time series) before rebuilding charts.
+- Files used here live in the repo (`src/` attachments); all charts in this project read directly from these generated artifacts.
 
 ## Data Sneak peek
 </br>
