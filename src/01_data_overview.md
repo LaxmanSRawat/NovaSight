@@ -4,7 +4,7 @@ style: text-style.css
 
 #  Exploring the Dataset
 
-Our analysis uses the NYPD Calls for Service (Historic) dataset from NYC Open Data, collected through the Computer Aided Dispatch (CAD) system.
+Our analysis uses the NYPD Calls for Service (Historic) dataset from NYC Open Data, collected through the Computer Aided Dispatch (CAD) system. Below we spell out what we kept, what we transformed, and the checks we ran so you know exactly what is inside the charts that follow.
 
 </br>
 
@@ -17,9 +17,7 @@ This dataset is downloaded from NYC Open data's <a href="https://data.cityofnewy
 The data is collected from the ICAD system which call takers and dispatchers use to communicate with callers and the NYPD. The dataset is updated quarterly as part of NYC's transparency initiative
 
 ## Attributes used
-The actual dataset contains around 48 millions rows and 20 columns, containing records starting from 2018. 
-
-For this project we focused on analysing the <strong> criminal and potential criminal </strong> incident that occured in <strong> 2024. </strong>
+The raw dataset contains ~48 million rows and 20 columns, spanning 2018 onward. For this project we focused on analysing <strong>criminal and potential criminal</strong> incidents that occurred in <strong>2024</strong>. Anything outside that scope was filtered out during preprocessing.
 
 
 Following table represents all the attributes from the dataset along with their description that were used in this project. 
@@ -53,6 +51,30 @@ To extract only incidents related to only criminal (and potential criminal) acti
 | Potential Crime | ALARMS, DISPUTE, EXPLOSIVE DEVICE OR THREAT, INVESTIGATE/POSSIBLE CRIME, PANIC ALARM, PO/SECURITY HOLDING SUSPECT, SHOT SPOTTER, SUSP LETTER, SUSP PACKAGE, SUSP SUBSTANCE, SEX OFFENDER HA ADDRESS VERIFY | 1,117,591 |
 
 </br>
+
+## What we kept (scope filters)
+- Time: records where `INCIDENT_DATE` falls in calendar year 2024.
+- Geography: calls with valid borough names and a precinct code (`NYPD_PCT_CD` > 0) for mapping.
+- Incident types: only the crime and potential-crime categories listed above.
+- Coordinates: rows retaining usable location fields for mapping (borough/precinct are our primary geographic keys).
+
+## How we processed the data
+- Pulled the public CSV via the NYC Open Data API and saved to parquet for faster downstream reads.
+- Normalized column names and trimmed categorical fields to reduce stray whitespace/casing issues.
+- Mapped each radio code to a curated incident category (crime vs. potential crime) using the published codebook spreadsheet.
+- Derived summary files used in the notebook:
+  - `call_volume_by_borough.csv`: call counts by borough and category.
+  - `call_volume_by_precinct.csv`: call counts by precinct and category.
+  - `borough_response_profile.csv` / `precinct_response_profile.csv`: median call duration and arrival delay by geography and category.
+  - `borough_call_timeseries.csv`: daily call counts by borough and category.
+- Exported simplified geometry files for boroughs and precincts (`nyc-borough-boundaries.geojson`, `NYPD_Precincts.geojson`) to speed up rendering.
+
+## Data quality checks & caveats
+- Date ranges: confirmed that 2024 slices cover the full calendar year (no leading/trailing gaps in `INCIDENT_DATE`).
+- Category coverage: every radio code used in 2024 is mapped to exactly one of the curated categories; unmapped codes are excluded from this analysis.
+- Arrival times: some calls have no `ARRIVD_TS`; those records remain in volume counts but are excluded from arrival-delay medians.
+- Location: precinct-level charts rely on `NYPD_PCT_CD` rather than raw coordinates to avoid projection/precision issues.
+- Updates: the source is refreshed quarterly; results reflect the snapshot date noted in the repo.
 
 ## Data Sneak peek
 </br>
