@@ -232,6 +232,189 @@ legendSizes.forEach((val, i) => {
 display(scatterSvg.node());
 ```
 
+<details>
+<summary>Code</summary>
+
+```javascript
+// Filter for whichever dataset is active; "All" shows both categories together
+const scatterData = scatterFocus === "All Categories"
+  ? boroughProfiles
+  : boroughProfiles.filter(d => d.category === scatterFocus);
+const selectedBorough = scatterBorough === "Citywide" ? null : scatterBorough;
+const scatterWidth = 960;
+const scatterHeight = 460;
+const scatterMargin = {top: 60, right: 160, bottom: 55, left: 80};
+const scatterX = d3.scaleLinear()
+  .domain([0, d3.max(scatterData, d => d.call_count) * 1.05]).nice()
+  .range([scatterMargin.left, scatterWidth - scatterMargin.right]);
+const scatterY = d3.scaleLinear()
+  .domain([0, d3.max(scatterData, d => d.median_call_duration) * 1.15]).nice()
+  .range([scatterHeight - scatterMargin.bottom, scatterMargin.top]);
+const arrivalExtent = d3.extent(scatterData, d => d.median_arrival_delay);
+const scatterR = d3.scaleSqrt()
+  .domain([Math.max(1, arrivalExtent[0]), arrivalExtent[1] || Math.max(1, arrivalExtent[0]) + 1])
+  .range([6, 24]);
+const scatterColor = d3.scaleOrdinal()
+  .domain(callCategories)
+  .range(["#0f6cbd", "#d1495b"]);
+
+const scatterSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, scatterWidth, scatterHeight])
+  .attr("width", scatterWidth)
+  .attr("height", scatterHeight)
+  .style("max-width", "100%")
+  .style("height", "auto")
+  .style("background", "#dfdfd6");
+
+const scatterInnerWidth = scatterWidth - scatterMargin.left - scatterMargin.right;
+const scatterInnerHeight = scatterHeight - scatterMargin.top - scatterMargin.bottom;
+
+scatterSvg.append("g")
+  .attr("transform", `translate(0, ${scatterHeight - scatterMargin.bottom})`)
+  .call(d3.axisBottom(scatterX).ticks(5, "~s").tickSize(-scatterInnerHeight).tickFormat(() => ""))
+  .selectAll("line")
+  .attr("stroke", "#bfbfbf")
+  .attr("stroke-dasharray", "3,3");
+
+scatterSvg.append("g")
+  .attr("transform", `translate(${scatterMargin.left},0)`)
+  .call(d3.axisLeft(scatterY).ticks(5).tickSize(-scatterInnerWidth).tickFormat(() => ""))
+  .selectAll("line")
+  .attr("stroke", "#bfbfbf")
+  .attr("stroke-dasharray", "3,3");
+
+scatterSvg.append("line")
+  .attr("x1", scatterMargin.left)
+  .attr("x2", scatterWidth - scatterMargin.right)
+  .attr("y1", scatterHeight - scatterMargin.bottom)
+  .attr("y2", scatterHeight - scatterMargin.bottom)
+  .attr("stroke", "#000")
+  .attr("stroke-width", 1.4);
+
+scatterSvg.append("line")
+  .attr("x1", scatterMargin.left)
+  .attr("x2", scatterMargin.left)
+  .attr("y1", scatterMargin.top)
+  .attr("y2", scatterHeight - scatterMargin.bottom)
+  .attr("stroke", "#000")
+  .attr("stroke-width", 1.4);
+
+scatterSvg.append("g")
+  .attr("transform", `translate(0, ${scatterHeight - scatterMargin.bottom})`)
+  .call(d3.axisBottom(scatterX).ticks(5, "~s"))
+  .selectAll("text")
+  .style("fill", "#000");
+
+scatterSvg.append("text")
+  .attr("x", scatterWidth / 2)
+  .attr("y", scatterHeight - 10)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Call volume (2024)");
+
+scatterSvg.append("g")
+  .attr("transform", `translate(${scatterMargin.left},0)`)
+  .call(d3.axisLeft(scatterY))
+  .selectAll("text")
+  .style("fill", "#000");
+
+scatterSvg.append("text")
+  .attr("x", -scatterHeight / 2)
+  .attr("y", 20)
+  .attr("transform", "rotate(-90)")
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .text("Median call duration (minutes)");
+
+const nodes = scatterSvg.append("g")
+  .selectAll("g.node")
+  .data(scatterData)
+  .join("g")
+  .attr("transform", d => `translate(${scatterX(d.call_count)}, ${scatterY(d.median_call_duration)})`);
+
+nodes.append("circle")
+  .attr("r", d => scatterR(d.median_arrival_delay))
+  .attr("fill", d => scatterFocus === "All Categories" ? scatterColor(d.category) : d.category === "Confirmed Crime" ? "#0f6cbd" : "#d1495b")
+  .attr("opacity", d => selectedBorough && d.boro_nm !== selectedBorough ? 0.3 : 0.95)
+  .attr("stroke", d => d.boro_nm === selectedBorough ? "#000" : "#5d768d")
+  .attr("stroke-width", d => d.boro_nm === selectedBorough ? 2 : 1)
+  .append("title")
+  .text(d => `${d.boro_nm} · ${d.category}
+${d.call_count.toLocaleString()} calls
+Median duration: ${d.median_call_duration} min
+Median arrival delay: ${d.median_arrival_delay} min`);
+
+nodes.append("text")
+  .text(d => d.boro_nm)
+  .attr("dx", d => {
+    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return 10;
+    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return -15;
+    return 0;
+  })
+  .attr("dy", d => {
+    const base = -scatterR(d.median_arrival_delay) - 6;
+    if (d.boro_nm === "Staten Island" && d.category === "Confirmed Crime") return base - 2;
+    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return base + 2;
+    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return base + 16;
+    return base;
+  })
+  .attr("text-anchor", d => {
+    if (d.boro_nm === "Staten Island" && d.category === "Potential Crime") return "start";
+    if (d.boro_nm === "Queens" && d.category === "Confirmed Crime") return "end";
+    return "middle";
+  })
+  .attr("fill", "#000")
+  .style("font-size", "11px")
+  .style("font-weight", "600");
+
+const legend = scatterSvg.append("g")
+  .attr("transform", `translate(${scatterWidth - scatterMargin.right / 5}, ${scatterMargin.top})`);
+
+if (scatterFocus === "All Categories") {
+  callCategories.forEach((cat, i) => {
+    const g = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
+    g.append("rect")
+      .attr("width", 14)
+      .attr("height", 14)
+      .attr("fill", scatterColor(cat));
+    g.append("text")
+      .attr("x", -10)
+      .attr("y", 11)
+      .attr("text-anchor", "end")
+      .attr("fill", "#000")
+      .style("font-size", "12px")
+      .text(cat);
+  });
+}
+
+const sizeLegend = legend.append("g")
+  .attr("transform", `translate(0, ${scatterFocus === "All Categories" ? callCategories.length * 20 + 20 : 12})`);
+
+const legendSizes = [arrivalExtent[0], d3.median(arrivalExtent), arrivalExtent[1]].map(d => Math.max(1, d));
+legendSizes.forEach((val, i) => {
+  const y = i * 34;
+  sizeLegend.append("circle")
+    .attr("cx", 0)
+    .attr("cy", y)
+    .attr("r", scatterR(val))
+    .attr("fill", "#0f6cbd")
+    .attr("opacity", 0.25)
+    .attr("stroke", "#0f6cbd");
+  sizeLegend.append("text")
+    .attr("x", -scatterR(val) - 10)
+    .attr("y", y + 4)
+    .attr("text-anchor", "end")
+    .attr("fill", "#000")
+    .style("font-size", "12px")
+    .text(`${d3.format(".1f")(val)} min arrival delay`);
+});
+
+display(scatterSvg.node());
+```
+</details>
+
 ### Analysis & Insights
 
 <ol class="insight-list">
@@ -405,12 +588,12 @@ defs.append('g')
   .attr('transform', `translate(20, ${10 + legendHeight})`)
   .call(d3.axisBottom(legendScale).ticks(5, '~s'))
   .selectAll('text')
-  .style('fill', '#fff');
+  .style('fill', '#000');
 
 defs.append('text')
   .attr('x', 20)
   .attr('y', 56.5)
-  .attr('fill', '#fff')
+  .attr('fill', '#000')
   .style('font-size', '12px')
   .text('Call volume per borough');
 
@@ -1096,6 +1279,233 @@ delayLegend.append("text")
 
 display(bivarSvg.node());
 ```
+
+<details>
+<summary>Code</summary>
+
+```javascript
+const bivarCategory = view(Inputs.radio(["All Categories", ...callCategories], {
+  label: "Call set",
+  value: "All Categories"
+}));
+
+const precinctGeo = await FileAttachment("NYPD_Precincts.geojson").json();
+
+const volRows = bivarCategory === "All Categories"
+  ? precinctCounts
+  : precinctCounts.filter(d => d.category === bivarCategory);
+const callByPct = new Map();
+volRows.forEach(d => {
+  const pct = +d.nypd_pct_cd;
+  const count = +d.call_count;
+  callByPct.set(pct, (callByPct.get(pct) || 0) + count);
+});
+
+const delays = bivarCategory === "All Categories"
+  ? precinctProfiles
+  : precinctProfiles.filter(d => d.category === bivarCategory);
+const delayByPct = new Map();
+delays.forEach(d => {
+  const pct = +d.nypd_pct_cd;
+  const val = +d.median_arrival_delay;
+  if (!Number.isFinite(val)) return;
+  const current = delayByPct.get(pct) || [];
+  current.push(val);
+  delayByPct.set(pct, current);
+});
+delayByPct.forEach((arr, pct) => {
+  const mean = d3.mean(arr);
+  delayByPct.set(pct, mean);
+});
+
+const bivarWidth = 960;
+const bivarHeight = 860;
+const bivarProjection = d3.geoMercator().fitSize([bivarWidth, bivarHeight], boroughBoundaries);
+const bivarPath = d3.geoPath(bivarProjection);
+
+const callExtent = d3.extent(callByPct.values());
+const volColor = d3.scaleLinear()
+  .domain([0, callExtent[1] || 1])
+  .range(["#f2f2f2", "#2f2f2f"]);
+
+const delayVals = Array.from(delayByPct.values()).filter(Number.isFinite);
+const delayBreaks = delayVals.length ? [d3.quantile(delayVals, 0.33), d3.quantile(delayVals, 0.66)] : [5, 10];
+const delayColor = d => {
+  if (!Number.isFinite(d)) return "#777";
+  if (d <= delayBreaks[0]) return "#3cb371";
+  if (d <= delayBreaks[1]) return "#f6c343";
+  return "#d84a4a";
+};
+
+function interiorPoint(feature) {
+  const rings = feature.geometry.type === "Polygon"
+    ? feature.geometry.coordinates
+    : feature.geometry.coordinates.flat();
+  let best = null;
+  rings.forEach(ring => {
+    const projected = ring.map(pt => bivarProjection(pt));
+    const area = Math.abs(d3.polygonArea(projected));
+    if (!best || area > best.area) best = {projected, area};
+  });
+  if (!best) return bivarPath.centroid(feature);
+  let p = d3.polygonCentroid(best.projected);
+  if (d3.polygonContains(best.projected, p)) return p;
+  const center = d3.polygonCentroid(best.projected);
+  let iter = 0;
+  while (!d3.polygonContains(best.projected, p) && iter < 5) {
+    p = [(p[0] + center[0]) / 2, (p[1] + center[1]) / 2];
+    iter++;
+  }
+  return p;
+}
+
+const bivarSvg = d3.create("svg")
+  .attr("viewBox", [0, 0, bivarWidth, bivarHeight])
+  .attr("width", bivarWidth)
+  .attr("height", bivarHeight)
+  .style("max-width", "100%")
+  .style("height", "auto")
+  .style("background", "#dfdfd6");
+
+bivarSvg.append("text")
+  .attr("x", bivarWidth / 2)
+  .attr("y", 34)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#000")
+  .style("font-weight", "600")
+  .style("font-size", "18px")
+  .text("Precinct call volume + arrival delay");
+
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", d => volColor(callByPct.get(+d.properties.Precinct) || 0))
+  .attr("stroke", "#b3b3b3")
+  .attr("stroke-width", 0.9)
+  .append("title")
+  .text(d => {
+    const pct = +d.properties.Precinct;
+    const calls = callByPct.get(pct) || 0;
+    const delay = delayByPct.get(pct);
+    return `Precinct ${pct}
+${calls.toLocaleString()} calls
+Median arrival delay: ${Number.isFinite(delay) ? d3.format(".1f")(delay) : "n/a"} min`;
+  });
+
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(precinctGeo.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", "none")
+  .attr("stroke", "#4a4a4a")
+  .attr("stroke-width", 1.1);
+
+bivarSvg.append("g")
+  .selectAll("circle")
+  .data(precinctGeo.features)
+  .join("circle")
+  .attr("cx", d => interiorPoint(d)[0])
+  .attr("cy", d => interiorPoint(d)[1])
+  .attr("r", 5.5)
+  .attr("fill", d => delayColor(delayByPct.get(+d.properties.Precinct)))
+  .attr("stroke", "#000")
+  .attr("stroke-width", 0.6)
+  .attr("opacity", 0.9)
+  .append("title")
+  .text(d => {
+    const pct = +d.properties.Precinct;
+    const calls = callByPct.get(pct) || 0;
+    const delay = delayByPct.get(pct);
+    return `Precinct ${pct}
+${calls.toLocaleString()} calls
+Median arrival delay: ${Number.isFinite(delay) ? d3.format(".1f")(delay) : "n/a"} min`;
+  });
+
+bivarSvg.append("g")
+  .selectAll("path")
+  .data(boroughBoundaries.features)
+  .join("path")
+  .attr("d", bivarPath)
+  .attr("fill", "none")
+  .attr("stroke", "#333")
+  .attr("stroke-width", 1.2);
+
+const volWidth = 240;
+const volHeight = 12;
+const volMargin = {left: 40, top: 70};
+const volScale = d3.scaleLinear().domain(volColor.domain()).range([0, volWidth]);
+const volDefs = bivarSvg.append("defs");
+const volGradId = "bivarPrecinctVolGrad";
+const volGrad = volDefs.append("linearGradient")
+  .attr("id", volGradId)
+  .attr("x1", "0%").attr("x2", "100%")
+  .attr("y1", "0%").attr("y2", "0%");
+for (let i = 0; i <= 10; i++) {
+  const t = i / 10;
+  volGrad.append("stop")
+    .attr("offset", `${t * 100}%`)
+    .attr("stop-color", volColor(volScale.invert(t * volWidth)));
+}
+
+const volLegend = bivarSvg.append("g")
+  .attr("transform", `translate(${volMargin.left}, ${volMargin.top})`);
+
+volLegend.append("rect")
+  .attr("width", volWidth)
+  .attr("height", volHeight)
+  .attr("fill", `url(#${volGradId})`)
+  .attr("stroke", "#333");
+
+volLegend.append("g")
+  .attr("transform", `translate(0, ${volHeight})`)
+  .call(d3.axisBottom(volScale).ticks(5, "~s"))
+  .selectAll("text")
+  .style("fill", "#000");
+
+volLegend.append("text")
+  .attr("x", 0)
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Call volume");
+
+const delayLegend = bivarSvg.append("g")
+  .attr("transform", `translate(${volMargin.left}, ${volMargin.top + 72})`);
+
+[
+  {label: `Fast (≤ ${d3.format(".1f")(delayBreaks[0])} min)`, color: "#3cb371"},
+  {label: `Moderate (${d3.format(".1f")(delayBreaks[0])}–${d3.format(".1f")(delayBreaks[1])} min)`, color: "#f6c343"},
+  {label: `Slow (> ${d3.format(".1f")(delayBreaks[1])} min)`, color: "#d84a4a"}
+].forEach((d, i) => {
+  const g = delayLegend.append("g").attr("transform", `translate(0, ${6 + i * 18})`);
+  g.append("circle")
+    .attr("r", 6)
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("fill", d.color)
+    .attr("stroke", "#000")
+    .attr("stroke-width", 0.6);
+  g.append("text")
+    .attr("x", 12)
+    .attr("y", 4)
+    .attr("fill", "#000")
+    .style("font-size", "12px")
+    .text(d.label);
+});
+
+delayLegend.append("text")
+  .attr("x", 0)
+  .attr("y", -10)
+  .attr("fill", "#000")
+  .style("font-size", "12px")
+  .text("Median arrival delay");
+
+display(bivarSvg.node());
+```
+</details>
 
 ### Analysis & Insights
 

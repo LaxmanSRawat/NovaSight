@@ -23,7 +23,8 @@ export default {
   root: "src",
 
   // Some additional configuration options and their defaults:
-  theme: "slate", // try "light", "dark", "slate", etc.
+  theme: "light", // base theme; custom styling is in text-style.css
+  style: "text-style.css", // shared styling inspired by Puff Puff Project
   // header: "", // what to show in the header (HTML)
   // footer: "Built with Observable.", // what to show in the footer (HTML)
   // sidebar: true, // whether to show the sidebar
