@@ -10,6 +10,7 @@ Insights and implications -->
 
 # The Rhythm of Emergency: Temporal Insights in 911 calls
 
+<br>
 
 ## Which Incident takes the longest time, and which incidents are resolved quickly? 
 
@@ -909,10 +910,6 @@ svg.node();
 
 
 ### 2. Potential Crime Category
-
-
-### Analysis & Insights
-
 
 #### Top 10 Incident by Median Duration
 
