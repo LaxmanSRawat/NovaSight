@@ -26,12 +26,12 @@ main, article {
 
 /* Layout chrome: sidebar and main content tint */
 .observablehq-sidebar {
-  background: #e9e1d6;
-  border-right: 1px solid #d0c6b6;
+  background: #cbbfb0 !important;
+  border-right: 1px solid #b4a899;
 }
 
 .observablehq-main {
-  background: #f3ebdf;
+  background: #f7f2e9;
 }
 
 /* Typography */
@@ -84,13 +84,48 @@ ul, ol {
 
 code, pre {
   background: #f1e8dc;
-  color: var(--puff-ink-strong);
 }
 
 pre {
   border: 1px solid var(--puff-border);
   border-radius: var(--puff-radius);
   padding: 0.75rem 1rem;
+}
+
+/* Syntax highlighting tokens (supports Prism-style .token and hljs classes) */
+pre code {
+  color: #1f1f1f;
+}
+pre code .token.comment,
+pre code .hljs-comment,
+pre code .hljs-quote {
+  color: #7f8c8d;
+}
+pre code .token.keyword,
+pre code .hljs-keyword,
+pre code .hljs-selector-tag {
+  color: #b23a48;
+  font-weight: 600;
+}
+pre code .token.function,
+pre code .hljs-function,
+pre code .hljs-title {
+  color: #0f6cbd;
+}
+pre code .token.string,
+pre code .hljs-string,
+pre code .hljs-attr {
+  color: #d67c1c;
+}
+pre code .token.number,
+pre code .hljs-number,
+pre code .hljs-literal {
+  color: #aa6fcd;
+}
+pre code .token.operator,
+pre code .hljs-operator,
+pre code .hljs-punctuation {
+  color: #37403b;
 }
 
 /* Chart framing */
@@ -193,6 +228,7 @@ table {
 th, td {
   padding: 0.6rem 0.75rem;
   border-bottom: 1px solid #e3d9cc;
+  border-right: 1px solid #e3d9cc;
 }
 
 th {
@@ -200,6 +236,11 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 0.85rem;
+}
+
+/* Remove double border on the last column */
+th:last-child, td:last-child {
+  border-right: none;
 }
 
 /* Figure spacing */
